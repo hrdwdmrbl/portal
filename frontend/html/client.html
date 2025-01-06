@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>MiroTalk WebRTC C2C</title>
+
+        <meta charset="utf-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+            name="description"
+            content="MiroTalk C2C WebRTC real-time cam-2-cam video calls and screen sharing, end-to-end encrypted."
+        />
+
+        <meta property="og:type" content="app-webrtc" />
+        <meta property="og:site_name" content="MiroTalk C2C" />
+        <meta property="og:title" content="Click the link to join this call." />
+        <meta property="og:description" content="Free WebRTC cam-2-cam video calls." />
+        <meta property="og:image" content="https://c2c.mirotalk.com/images/logo.svg" />
+        <meta property="og:url" content="https://c2c.mirotalk.com" />
+
+        <link rel="apple-touch-icon" href="../images/favicon.png" />
+        <link rel="icon" type="image/x-icon" href="../images/favicon.ico" />
+
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+        <link rel="stylesheet" href="../css/chat.css" />
+        <link rel="stylesheet" href="../css/client.css" />
+        <link rel="stylesheet" href="../css/common.css" />
+
+        <script async src="../js/umami.js"></script>
+
+        <script defer src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+        <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11.4.8"></script>
+        <script defer src="https://cdn.jsdelivr.net/npm/xss/dist/xss.min.js"></script>
+        <script defer src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
+        <!-- <script defer src="https://unpkg.com/@popperjs/core@2"></script>
+        <script defer src="https://unpkg.com/tippy.js@6"></script> -->
+        <script defer src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/2.11.8/umd/popper.min.js"></script>
+        <script defer src="https://cdnjs.cloudflare.com/ajax/libs/tippy.js/6.3.7/tippy-bundle.umd.min.js"></script>
+        <script defer src="https://cdnjs.cloudflare.com/ajax/libs/UAParser.js/1.0.37/ua-parser.min.js"></script>
+        <script defer src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+        <script defer src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.js"></script>
+        <script defer src="../js/storage.js"></script>
+        <script defer src="../js/swal.js"></script>
+        <script defer src="../js/utils.js"></script>
+        <script defer src="../js/client.js"></script>
+        <script defer src="../js/translate.js"></script>
+    </head>
+
+    <body>
+        <noscript>You need to enable JavaScript to run this app.</noscript>
+
+        <div id="loadingDivContainer">
+            <div id="loadingDiv" class="center pulsate">
+                <h1>Loading...</h1>
+                <pre>
+Please allow camera & microphone
+access to use this app.
+                </pre>
+            </div>
+        </div>
+
+        <div id="waitingDivContainer" class="fadeIn">
+            <div id="waitingDiv" class="center pulsate">
+                <h1>Waiting...</h1>
+                <pre>
+                    Wait user to join.
+                </pre>
+                <button id="shareRoomBtn" class="fas fa-share-nodes"></button>
+                <button id="copyRoomBtn" class="fas fa-copy"></button>
+                <button id="initHideMeBtn" class="fas fa-user"></button>
+                <button id="initVideoBtn" class="fas fa-video"></button>
+                <button id="initAudioBtn" class="fas fa-microphone"></button>
+                <button id="initScreenShareBtn" class="fas fa-desktop"></button>
+                <button id="initSettingsBtn" class="fas fa-ellipsis-vertical"></button>
+                <button id="initHomeBtn" class="fas fa-home"></button>
+            </div>
+        </div>
+
+        <div id="buttonsBar">
+            <button id="ringBtn" class="fas fa-user"></button>
+            <button id="hideMeBtn" class="fas fa-user"></button>
+            <button id="videoBtn" class="fas fa-video"></button>
+            <button id="audioBtn" class="fas fa-microphone"></button>
+            <button id="swapCameraBtn" class="fas fa-camera-rotate"></button>
+            <button id="screenShareBtn" class="fas fa-desktop"></button>
+            <button id="chatOpenBtn" class="fas fa-comments"></button>
+            <button id="settingsBtn" class="fas fa-ellipsis-vertical"></button>
+            <button id="homeBtn" class="fas fa-home"></button>
+        </div>
+
+        <div id="settings">
+            <button id="settingsCloseBtn" class="fas fa-times"></button>
+            <label for="videoSource"><i class="fas fa-video"></i> Camera</label>
+            <select id="videoSource"></select>
+            <label><i class="fas fa-image"></i> Video quality</label>
+            <select id="videoQualitySelect">
+                <option value="default">Default</option>
+                <option value="qvga">QVGA</option>
+                <option value="vga">VGA</option>
+                <option value="hd">HD</option>
+                <option value="fhd">FULL HD</option>
+                <option value="2k">2K</option>
+                <option value="4k">4K</option>
+            </select>
+            <label><i class="fas fa-gauge"></i> Video frame rate</label>
+            <select id="videoFpsSelect">
+                <option value="default">Default</option>
+                <option value="60">60 fps</option>
+                <option value="30">30 fps</option>
+                <option value="15">15 fps</option>
+                <option value="5">5 fps</option>
+            </select>
+            <label for="audioSource"><i class="fas fa-microphone"></i> Microphone</label>
+            <select id="audioSource"></select>
+            <label><i class="fa-solid fa-language"></i> Language</label>
+            <div id="google_translate_element"></div>
+            <hr />
+            <table id="settingsTable">
+                <tr id="maxVideoQualityDiv">
+                    <td>
+                        <span> <i class="fas fa-star"></i> Best quality </span>
+                    </td>
+                    <td><input id="switchMaxVideoQuality" class="toggle" type="checkbox" /></td>
+                </tr>
+                <tr id="aspectRatioDiv">
+                    <td>
+                        <span> <i class="fas fa-display"></i> Aspect ratio </span>
+                    </td>
+                    <td><input id="switchKeepAspectRatio" class="toggle" type="checkbox" /></td>
+                </tr>
+                <tr id="pushToTalkDiv">
+                    <td>
+                        <span> <i class="fas fa-hand-pointer"></i> Push to talk </span>
+                    </td>
+                    <td><input id="switchPushToTalk" class="toggle" type="checkbox" /></td>
+                </tr>
+                <tr>
+                    <td>
+                        <span> <i class="fas fa-clock"></i> Session time </span>
+                    </td>
+                    <td><p class="notranslate" id="sessionTime">0s</p></td>
+                </tr>
+            </table>
+            <hr />
+        </div>
+
+        <div id="chat" class="chat">
+            <div class="header">
+                <span class="title">Chat</span>
+                <button id="chatCloseBtn" class="fas fa-times"></button>
+            </div>
+            <div class="body" id="chatBody"></div>
+            <div class="footer">
+                <textarea id="chatInput" placeholder="Write a message..."></textarea>
+                <button id="chatSendBtn" class="fas fa-paper-plane"></button>
+            </div>
+        </div>
+    </body>
+</html>
