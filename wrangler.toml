@@ -1,10 +1,10 @@
-name = "portl-signal"
+name = "portlsignal"
 compatibility_date = "2025-01-06"
 
 # If you're using the 'wrangler' CLI, define your main script:
 main = "worker.js"
 
-routes = [{ pattern = "portl-signal.portl.cam", custom_domain = true }]
+routes = [{ pattern = "signal.portl.cam", custom_domain = true }]
 
 # For local testing, you might define:
 [dev]

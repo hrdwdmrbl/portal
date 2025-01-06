@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Portal - portl.cam</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: sans-serif;
+      }
+
+      body {
+        background: #333;
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      #videos {
+        position: relative;
+        width: 100%;
+        flex: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      video {
+        max-width: 100%;
+        max-height: 100%;
+        background: #000;
+      }
+
+      #controls {
+        background: rgba(0, 0, 0, 0.6);
+        padding: 0.5em;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        gap: 0.5em;
+      }
+
+      button,
+      input[type="text"] {
+        font-size: 1rem;
+        padding: 0.4em;
+      }
+
+      #messageBubble {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(255, 255, 255, 0.8);
+        color: #000;
+        padding: 1em;
+        border-radius: 0.5em;
+        display: none;
+        max-width: 80%;
+        cursor: pointer;
+        word-wrap: break-word;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="videos">
+      <video id="localVideo" autoplay muted playsinline></video>
+      <video id="remoteVideo" autoplay playsinline></video>
+      <div id="messageBubble"></div>
+    </div>
+
+    <div id="controls">
+      <button id="btnToggleVideo">Video On</button>
+      <button id="btnToggleAudio">Audio On</button>
+      <button id="btnRing">Ring</button>
+      <button id="btnMorse">Morse</button>
+      <input type="text" id="txtMessage" placeholder="Type message" />
+      <button id="btnSend">Send</button>
+    </div>
+
+    <!-- Placeholder audios (played when we receive ring/morse messages) -->
+    <audio id="ringAudio" src="audios/ring.mp3" preload="auto"></audio>
+    <audio id="beepAudio" src="audios/beep.wav" preload="auto" loop></audio>
+
+    <!-- Our main app logic -->
+    <script src="./app.js"></script>
+  </body>
+</html>
