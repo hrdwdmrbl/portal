@@ -22,7 +22,6 @@ addEventListener("fetch", (event) => {
 async function handleWebSocket(request) {
   // Cloudflare sets the client's public IP in the CF-Connecting-IP header
   const ip = request.headers.get("CF-Connecting-IP") || "unknown";
-  console.log("Client IP:", ip);
 
   // Create a WebSocket server/client pair
   const [client, server] = Object.values(new WebSocketPair());
@@ -35,8 +34,11 @@ async function handleWebSocket(request) {
   const connectionTimestamp = Date.now();
   connectionsByIP.get(ip).push({ server, connectionTimestamp });
 
+  console.log("Client IP:", ip, "connections:", connectionsByIP.get(ip).length);
+
   // If more than one connection, remove the oldest. Max 2 connections per IP.
-  if (connectionsByIP.get(ip).length > 1) {
+  if (connectionsByIP.get(ip).length > 2) {
+    console.log("Removing oldest connection");
     const oldestConnection = connectionsByIP.get(ip).sort((a, b) => a.connectionTimestamp - b.connectionTimestamp)[0];
     oldestConnection.server.close();
     connectionsByIP.set(
@@ -47,13 +49,12 @@ async function handleWebSocket(request) {
 
   // Broadcast any incoming message to all others on the same IP
   server.addEventListener("message", (event) => {
-    console.log("Received message:", ip, event.data);
-    const peers = (connectionsByIP.get(ip) || []).map((conn) => conn.server);
-    for (let conn of peers) {
-      if (conn !== server) {
-        conn.send(event.data);
-      }
-    }
+    const peers = (connectionsByIP.get(ip) || []).map((conn) => conn.server).filter((conn) => conn !== server);
+    console.log("Received message:", ip, event.data, connectionsByIP.get(ip).length, "peers");
+    peers.forEach((conn) => {
+      console.log("Sending message to peer:", conn);
+      conn.send(event.data);
+    });
   });
 
   // Clean up when a connection closes
