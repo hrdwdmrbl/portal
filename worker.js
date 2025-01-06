@@ -22,9 +22,10 @@ addEventListener("fetch", (event) => {
 async function handleWebSocket(request) {
   // Cloudflare sets the client's public IP in the CF-Connecting-IP header
   const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+  console.log("Client IP:", ip);
 
   // Create a WebSocket server/client pair
-  const [client, server] = new WebSocketPair();
+  const [client, server] = Object.values(new WebSocketPair());
   server.accept(); // Accept the server side
 
   // Add this server connection to the correct "bucket" (the IP)
@@ -46,6 +47,7 @@ async function handleWebSocket(request) {
 
   // Broadcast any incoming message to all others on the same IP
   server.addEventListener("message", (event) => {
+    console.log("Received message:", ip, event.data);
     const peers = (connectionsByIP.get(ip) || []).map((conn) => conn.server);
     for (let conn of peers) {
       if (conn !== server) {
@@ -56,6 +58,7 @@ async function handleWebSocket(request) {
 
   // Clean up when a connection closes
   server.addEventListener("close", () => {
+    console.log("Connection closed:", ip);
     const peers = (connectionsByIP.get(ip) || []).map((conn) => conn.server);
     connectionsByIP.set(
       ip,
