@@ -30,6 +30,7 @@
         align-items: center;
       }
 
+      /* We only have one remote video now */
       video {
         max-width: 100%;
         max-height: 100%;
@@ -69,7 +70,7 @@
   </head>
   <body>
     <div id="videos">
-      <video id="localVideo" autoplay muted playsinline></video>
+      <!-- Only remote video now -->
       <video id="remoteVideo" autoplay playsinline></video>
       <div id="messageBubble"></div>
     </div>
@@ -87,7 +88,7 @@
     <audio id="ringAudio" src="audios/ring.mp3" preload="auto"></audio>
     <audio id="beepAudio" src="audios/beep.wav" preload="auto" loop></audio>
 
-    <!-- Our main app logic -->
+    <!-- Main logic -->
     <script src="./app.js"></script>
   </body>
 </html>

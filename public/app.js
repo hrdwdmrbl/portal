@@ -2,12 +2,12 @@
   Configuration 
 ******************************/
 const SIGNALING_URL = "wss://signal.portl.cam/ws";
-// Replace with your Worker subdomain if different. e.g. "wss://my-signal-subdomain.workers.dev/ws"
+// Replace with your actual Worker subdomain if needed.
 
 const ICE_CONFIG = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
-    // TURN server config goes here if needed.
+    // Add a TURN server here if needed for NAT traversal (probably not needed on LAN).
   ],
 };
 
@@ -34,7 +34,6 @@ const btnMorse = document.getElementById("btnMorse");
 const txtMessage = document.getElementById("txtMessage");
 const btnSend = document.getElementById("btnSend");
 const messageBubble = document.getElementById("messageBubble");
-
 const ringAudio = document.getElementById("ringAudio");
 const beepAudio = document.getElementById("beepAudio");
 
@@ -44,10 +43,9 @@ const beepAudio = document.getElementById("beepAudio");
 init();
 
 async function init() {
-  // Start media
+  // Start media (we don't display it locally; just send it to the peer)
   try {
     localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    localVideo.srcObject = localStream;
   } catch (err) {
     console.error("Error getting user media:", err);
   }
@@ -61,6 +59,7 @@ async function init() {
   btnRing.addEventListener("click", sendRing);
   btnMorse.addEventListener("mousedown", startMorse);
   btnMorse.addEventListener("mouseup", stopMorse);
+  // For touchscreen
   btnMorse.addEventListener("touchstart", startMorse);
   btnMorse.addEventListener("touchend", stopMorse);
   btnSend.addEventListener("click", sendMessage);
@@ -113,7 +112,7 @@ function sendSignal(msg) {
 function setupPeerConnection() {
   pc = new RTCPeerConnection(ICE_CONFIG);
 
-  // Add local tracks
+  // Add local tracks so the other side can see/hear us
   if (localStream) {
     localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
   }
@@ -129,14 +128,14 @@ function setupPeerConnection() {
   };
 
   pc.ontrack = (event) => {
-    // Attach the remote stream
+    // Attach the remote's stream to our video element
     remoteVideo.srcObject = event.streams[0];
   };
 
   pc.onconnectionstatechange = () => {
     console.log("PC state:", pc.connectionState);
     if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
-      // Try to restart ICE or fully renegotiate
+      // Attempt renegotiation or refresh
       renegotiate();
     }
   };
@@ -147,15 +146,15 @@ function setupPeerConnection() {
     channel.onmessage = (e) => onDataChannelMessage(e.data);
   };
 
-  // Kick off initial negotiation
+  // Initiate an offer to connect
   renegotiate();
+  console.log("PC created");
 }
 
 /******************************
   Negotiation Logic 
 ******************************/
 async function renegotiate() {
-  if (!pc) return;
   try {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
@@ -166,8 +165,6 @@ async function renegotiate() {
 }
 
 async function handleSignal(data) {
-  if (!pc) return;
-
   // Remote ICE candidate
   if (data.candidate) {
     try {
@@ -175,10 +172,8 @@ async function handleSignal(data) {
     } catch (err) {
       console.error("Error adding ice candidate:", err);
     }
-  }
-
-  // Remote SDP (offer/answer)
-  if (data.sdp) {
+  } else if (data.sdp) {
+    // Remote SDP (offer/answer)
     try {
       const remoteDesc = new RTCSessionDescription(data.sdp);
       await pc.setRemoteDescription(remoteDesc);
@@ -191,6 +186,8 @@ async function handleSignal(data) {
     } catch (err) {
       console.error("Error setting remote SDP:", err);
     }
+  } else {
+    console.warn("Unknown signal:", data);
   }
 }
 
@@ -198,6 +195,8 @@ async function handleSignal(data) {
   Data Channel: ring, morse, messages
 ******************************/
 function onDataChannelMessage(message) {
+  console.log("Received message:", message);
+
   let msgObj;
   try {
     msgObj = JSON.parse(message);

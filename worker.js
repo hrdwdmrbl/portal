@@ -31,7 +31,18 @@ async function handleWebSocket(request) {
   if (!connectionsByIP.has(ip)) {
     connectionsByIP.set(ip, []);
   }
-  connectionsByIP.get(ip).push(server);
+  const connectionTimestamp = Date.now();
+  connectionsByIP.get(ip).push({ server, connectionTimestamp });
+
+  // If more than one connection, remove the oldest. Max 2 connections per IP.
+  if (connectionsByIP.get(ip).length > 1) {
+    const oldestConnection = connectionsByIP.get(ip).sort((a, b) => a.connectionTimestamp - b.connectionTimestamp)[0];
+    oldestConnection.server.close();
+    connectionsByIP.set(
+      ip,
+      connectionsByIP.get(ip).filter((conn) => conn !== oldestConnection)
+    );
+  }
 
   // Broadcast any incoming message to all others on the same IP
   server.addEventListener("message", (event) => {
