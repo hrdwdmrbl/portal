@@ -10,3 +10,7 @@ assets = { directory = "./public/" }
 # For local testing, you might define:
 [dev]
 port = 8787
+
+# wrangler.toml (wrangler v3.88.0^)
+[observability.logs]
+enabled = true

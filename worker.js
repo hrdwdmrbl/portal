@@ -46,7 +46,7 @@ async function handleWebSocket(request) {
 
   // Broadcast any incoming message to all others on the same IP
   server.addEventListener("message", (event) => {
-    const peers = connectionsByIP.get(ip) || [];
+    const peers = (connectionsByIP.get(ip) || []).map((conn) => conn.server);
     for (let conn of peers) {
       if (conn !== server) {
         conn.send(event.data);
@@ -56,7 +56,7 @@ async function handleWebSocket(request) {
 
   // Clean up when a connection closes
   server.addEventListener("close", () => {
-    const peers = connectionsByIP.get(ip) || [];
+    const peers = (connectionsByIP.get(ip) || []).map((conn) => conn.server);
     connectionsByIP.set(
       ip,
       peers.filter((conn) => conn !== server)
