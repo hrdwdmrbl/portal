@@ -1,94 +1,263 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Portal - portl.cam</title>
-    <style>
-      * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-        font-family: sans-serif;
+<head>
+  <meta charset="UTF-8">
+  <title>WebRTC Portal</title>
+  <style>
+    body { 
+      font-family: sans-serif; 
+      margin: 2rem; 
+      background: #000;
+      color: #fff;
+    }
+    .status-light {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #333;
+      display: inline-block;
+      margin-right: 8px;
+    }
+    .status-light.active { 
+      background: #0f0;
+      box-shadow: 0 0 10px #0f0;
+    }
+    video { 
+      width: 100%;
+      max-width: 1200px;
+      background: #111;
+      margin-top: 1rem;
+    }
+    #localVideo {
+      display: none;
+    }
+    .status {
+      display: flex;
+      align-items: center;
+      margin: 1rem 0;
+    }
+    #log {
+      font-family: monospace;
+      color: #0f0;
+      background: rgba(0,0,0,0.5);
+      padding: 1rem;
+      margin-top: 1rem;
+      height: 200px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="status">
+    <div id="localLight" class="status-light"></div>
+    <span>Local Camera</span>
+  </div>
+  <div class="status">
+    <div id="remoteLight" class="status-light"></div>
+    <span>Remote Connection</span>
+  </div>
+
+  <video id="localVideo" autoplay muted playsinline></video>
+  <video id="remoteVideo" autoplay playsinline></video>
+
+  <pre id="log"></pre>
+
+  <script>
+    const WS_URL = "wss://signal.portl.cam/ws";
+    let ws;
+    let pc;
+    let localStream;
+    let role = null;
+    let reconnectAttempt = 0;
+    const MAX_RECONNECT_DELAY = 5000;
+
+    const logEl = document.getElementById("log");
+    function log(msg) { 
+      console.log(msg);
+      logEl.textContent += msg + "\n";
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    // Start automatically
+    startConnection();
+
+    async function startConnection() {
+      try {
+        log("Requesting local media...");
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        document.getElementById("localVideo").srcObject = localStream;
+        document.getElementById("localLight").classList.add("active");
+
+        await setupPeerConnection();
+        connectWebSocket();
+
+      } catch (err) {
+        log("Error: " + err);
+        console.error(err);
+      }
+    }
+
+    async function setupPeerConnection() {
+      if (pc) {
+        pc.close();
       }
 
-      body {
-        background: #333;
-        color: #fff;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        height: 100vh;
-        overflow: hidden;
+      // Create RTCPeerConnection - no STUN/TURN needed for LAN connections
+      pc = new RTCPeerConnection();
+      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+      pc.ontrack = (evt) => {
+        log("Received remote track");
+        document.getElementById("remoteVideo").srcObject = evt.streams[0];
+        document.getElementById("remoteLight").classList.add("active");
+      };
+
+      pc.oniceconnectionstatechange = () => {
+        log("ICE Connection State: " + pc.iceConnectionState);
+        if (pc.iceConnectionState === 'disconnected') {
+          document.getElementById("remoteLight").classList.remove("active");
+        }
+      };
+
+      // Gather ICE candidates
+      const iceCandidates = [];
+      pc.onicecandidate = (evt) => {
+        if (evt.candidate) {
+          iceCandidates.push(evt.candidate);
+        }
+      };
+
+      return new Promise(async (resolve) => {
+        // Create offer immediately
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        
+        // Wait for ICE gathering - faster on LAN
+        await waitForIce(pc);
+
+        resolve({
+          sdp: pc.localDescription.sdp,
+          ice: iceCandidates
+        });
+      });
+    }
+
+    function connectWebSocket() {
+      if (ws) {
+        ws.close();
       }
 
-      #videos {
-        position: relative;
-        width: 100%;
-        flex: 1;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-      }
+      ws = new WebSocket(WS_URL);
+      
+      ws.addEventListener("open", async () => {
+        log("WebSocket connected");
+        reconnectAttempt = 0;
+        
+        // Always try to be offerer first
+        if (!role) {
+          const offer = await setupPeerConnection();
+          role = "offerer";
+          log("Sending initial offer");
+          ws.send(JSON.stringify({ type: "offer", data: offer }));
+        }
+      });
 
-      /* We only have one remote video now */
-      video {
-        max-width: 100%;
-        max-height: 100%;
-        background: #000;
-      }
+      ws.addEventListener("message", async (evt) => {
+        const msg = JSON.parse(evt.data);
 
-      #controls {
-        background: rgba(0, 0, 0, 0.6);
-        padding: 0.5em;
-        width: 100%;
-        display: flex;
-        justify-content: center;
-        gap: 0.5em;
-      }
+        if (msg.error) {
+          log("WS error: " + msg.error);
+          if (msg.error.includes("Offer already exists")) {
+            // Clear existing role and become answerer
+            role = "answerer";
+            log("Existing offer found - switching to answerer role");
+          }
+          return;
+        }
 
-      button,
-      input[type="text"] {
-        font-size: 1rem;
-        padding: 0.4em;
-      }
+        if (msg.info) {
+          log("WS info: " + msg.info);
+          if (msg.info.includes("Room data cleared")) {
+            // Other client disconnected - reset and try to be offerer
+            log("Other client disconnected - resetting connection");
+            role = null;
+            await setupPeerConnection();
+            role = "offerer";
+            const offer = await setupPeerConnection();
+            ws.send(JSON.stringify({ type: "offer", data: offer }));
+          }
+          return;
+        }
 
-      #messageBubble {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: rgba(255, 255, 255, 0.8);
-        color: #000;
-        padding: 1em;
-        border-radius: 0.5em;
-        display: none;
-        max-width: 80%;
-        cursor: pointer;
-        word-wrap: break-word;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="videos">
-      <!-- Only remote video now -->
-      <video id="remoteVideo" autoplay playsinline></video>
-      <div id="messageBubble"></div>
-    </div>
+        if (msg.type === "offer") {
+          if (!role || role === "answerer") {
+            log("Received offer - creating answer");
+            role = "answerer";
+            
+            await pc.setRemoteDescription({ type: "offer", sdp: msg.data.sdp });
+            for (let c of msg.data.ice) {
+              await pc.addIceCandidate(c);
+            }
 
-    <div id="controls">
-      <button id="btnToggleVideo">Video On</button>
-      <button id="btnToggleAudio">Audio On</button>
-      <button id="btnRing">Ring</button>
-      <button id="btnMorse">Morse</button>
-      <input type="text" id="txtMessage" placeholder="Type message" />
-      <button id="btnSend">Send</button>
-    </div>
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
 
-    <!-- Placeholder audios (played when we receive ring/morse messages) -->
-    <audio id="ringAudio" src="audios/ring.mp3" preload="auto"></audio>
-    <audio id="beepAudio" src="audios/beep.mp3" preload="auto" loop></audio>
+            const localIce = [];
+            pc.onicecandidate = (evt) => {
+              if (evt.candidate) localIce.push(evt.candidate);
+            };
 
-    <!-- Main logic -->
-    <script src="./app.js"></script>
-  </body>
+            await waitForIce(pc);
+
+            ws.send(JSON.stringify({ 
+              type: "answer", 
+              data: {
+                sdp: pc.localDescription.sdp,
+                ice: localIce
+              }
+            }));
+            log("Answer sent");
+          }
+        } else if (msg.type === "answer" && role === "offerer") {
+          log("Received answer - setting remote description");
+          await pc.setRemoteDescription({ type: "answer", sdp: msg.data.sdp });
+          for (let c of msg.data.ice) {
+            await pc.addIceCandidate(c);
+          }
+          log("Remote description set");
+        }
+      });
+
+      ws.addEventListener("close", () => {
+        log("WebSocket closed. Reconnecting...");
+        const delay = Math.min(1000 * Math.pow(2, reconnectAttempt), MAX_RECONNECT_DELAY);
+        reconnectAttempt++;
+        setTimeout(connectWebSocket, delay);
+      });
+
+      ws.addEventListener("error", (error) => {
+        log("WebSocket error: " + error.message);
+      });
+    }
+
+    function waitForIce(pc) {
+      return new Promise((resolve) => {
+        let done = false;
+        pc.onicegatheringstatechange = () => {
+          if (pc.iceGatheringState === "complete" && !done) {
+            done = true;
+            resolve();
+          }
+        };
+        // Shorter timeout for LAN-only ICE gathering
+        setTimeout(() => {
+          if (!done) {
+            done = true;
+            resolve();
+          }
+        }, 1000);
+      });
+    }
+  </script>
+</body>
 </html>
