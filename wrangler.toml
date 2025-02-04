@@ -14,3 +14,7 @@ port = 8787
 # wrangler.toml (wrangler v3.88.0^)
 [observability.logs]
 enabled = true
+
+[[kv_namespaces]]
+binding = "SIGNALING_KV"
+id = "portl-signal-kv"

@@ -1,12 +1,52 @@
-// A minimal Cloudflare Worker for WebRTC signaling
-// with connections "bucketed" by IP so only peers on the same public IP see each other.
+class ConnectionsManager {
+  constructor() {
+    this.connectionState = new Map();
+  }
 
-let connectionsByIP = new Map();
+  addConnection(ip, server) {
+    if (!this.connectionState.has(ip)) {
+      this.connectionState.set(ip, []);
+    }
+
+    console.log("Client IP:", ip, "connections:", this.connectionState.get(ip).length);
+    const connectionTimestamp = Date.now();
+    this.connectionState.get(ip).push({ server, connectionTimestamp });
+  }
+
+  checkForExcessConnections(ip) {
+    const servers = this.connectionState.get(ip);
+    if (servers.length > 2) {
+      const oldestServer = servers.sort((a, b) => a.connectionTimestamp - b.connectionTimestamp)[0];
+      oldestServer.server.close();
+      this.connectionState.set(
+        ip,
+        servers.filter((conn) => conn !== oldestServer)
+      );
+    }
+  }
+
+  removeConnection(ip, server) {
+    console.log("Connection closed:", ip);
+    const servers = this.connectionState.get(ip);
+    this.connectionState.set(
+      ip,
+      servers.filter((conn) => conn !== server)
+    );
+  }
+
+  getPeers(ip, server) {
+    return this.connectionState
+      .get(ip)
+      .map((conn) => conn.server)
+      .filter((conn) => conn !== server);
+  }
+}
+
+const connectionsManager = new ConnectionsManager();
 
 addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
-  // WebSocket endpoint for signaling
   if (url.pathname === "/ws" && event.request.headers.get("Upgrade") === "websocket") {
     event.respondWith(handleWebSocket(event.request));
     return;
@@ -15,56 +55,29 @@ addEventListener("fetch", (event) => {
     return;
   }
 
-  // Return a 404 (or similar) for any other path
   event.respondWith(new Response("Not found", { status: 404 }));
 });
 
 async function handleWebSocket(request) {
-  // Cloudflare sets the client's public IP in the CF-Connecting-IP header
   const ip = request.headers.get("CF-Connecting-IP") || "unknown";
 
-  // Create a WebSocket server/client pair
   const [client, server] = Object.values(new WebSocketPair());
   server.accept(); // Accept the server side
 
-  // Add this server connection to the correct "bucket" (the IP)
-  if (!connectionsByIP.has(ip)) {
-    connectionsByIP.set(ip, []);
-  }
-  const connectionTimestamp = Date.now();
-  connectionsByIP.get(ip).push({ server, connectionTimestamp });
-
-  console.log("Client IP:", ip, "connections:", connectionsByIP.get(ip).length);
-
-  // If more than one connection, remove the oldest. Max 2 connections per IP.
-  if (connectionsByIP.get(ip).length > 2) {
-    console.log("Removing oldest connection");
-    const oldestConnection = connectionsByIP.get(ip).sort((a, b) => a.connectionTimestamp - b.connectionTimestamp)[0];
-    oldestConnection.server.close();
-    connectionsByIP.set(
-      ip,
-      connectionsByIP.get(ip).filter((conn) => conn !== oldestConnection)
-    );
-  }
+  connectionsManager.addConnection(ip, server);
 
   // Broadcast any incoming message to all others on the same IP
   server.addEventListener("message", (event) => {
-    const peers = (connectionsByIP.get(ip) || []).map((conn) => conn.server).filter((conn) => conn !== server);
-    console.log("Received message:", ip, event.data, connectionsByIP.get(ip).length, "peers");
+    const peers = connectionsManager.getPeers(ip, server);
+    console.log("Received message:", ip, "peers:", peers.length);
     peers.forEach((conn) => {
-      console.log("Sending message to peer:", conn);
       conn.send(event.data);
     });
   });
 
   // Clean up when a connection closes
   server.addEventListener("close", () => {
-    console.log("Connection closed:", ip);
-    const peers = (connectionsByIP.get(ip) || []).map((conn) => conn.server);
-    connectionsByIP.set(
-      ip,
-      peers.filter((conn) => conn !== server)
-    );
+    connectionsManager.removeConnection(ip, server);
   });
 
   // Return the client side of the pair to the browser
