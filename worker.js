@@ -1,88 +1,187 @@
-class ConnectionsManager {
-  constructor() {
-    this.connectionState = new Map();
-  }
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
 
-  addConnection(ip, server) {
-    if (!this.connectionState.has(ip)) {
-      this.connectionState.set(ip, []);
+    // Only handle WebSocket upgrades at /ws
+    if (url.pathname === "/ws" && request.headers.get("Upgrade") === "websocket") {
+      return handleWebSocket(request, env);
     }
 
-    console.log("Client IP:", ip, "connections:", this.connectionState.get(ip).length);
-    const connectionTimestamp = Date.now();
-    this.connectionState.get(ip).push({ server, connectionTimestamp });
+    return new Response("Not found", { status: 404 });
+  },
+};
+
+/**
+ * The structure in KV for each IP (roomId):
+ * {
+ *   activeCount: number,        // 0..2
+ *   offer: { sdp, ice } | null, // or undefined
+ *   answer: { sdp, ice } | null,
+ *   firstWriter: "offer"|"answer"|null,
+ *   updatedAt: number // timestamp
+ * }
+ */
+
+async function handleWebSocket(request, env) {
+  const [client, server] = Object.values(new WebSocketPair());
+  server.accept();
+
+  // We'll treat CF-Connecting-IP as the "roomId".
+  const roomId = request.headers.get("CF-Connecting-IP") || "unknown";
+
+  // Try loading the current record (or create a new one)
+  let record = await env.PORTAL_KV.get(roomId, { type: "json" });
+  if (!record) {
+    record = {
+      activeCount: 0,
+      offer: null,
+      answer: null,
+      firstWriter: null,
+      updatedAt: Date.now(),
+    };
   }
 
-  checkForExcessConnections(ip) {
-    const servers = this.connectionState.get(ip);
-    if (servers.length > 2) {
-      const oldestServer = servers.sort((a, b) => a.connectionTimestamp - b.connectionTimestamp)[0];
-      oldestServer.server.close();
-      this.connectionState.set(
-        ip,
-        servers.filter((conn) => conn !== oldestServer)
+  // Increment activeCount (one more connection for this IP)
+  record.activeCount = (record.activeCount || 0) + 1;
+  record.updatedAt = Date.now();
+  await env.PORTAL_KV.put(roomId, JSON.stringify(record));
+
+  // Start polling KV for changes, push them to the client in real time
+  const stopPolling = startPollingKV(env, roomId, record, server);
+
+  server.addEventListener("message", async (evt) => {
+    let msg;
+    try {
+      msg = JSON.parse(evt.data);
+    } catch (err) {
+      server.send(JSON.stringify({ error: "Invalid JSON" }));
+      return;
+    }
+
+    // Expect shape: { type: "offer"|"answer", data: { sdp, ice[] } }
+    if (!["offer", "answer"].includes(msg.type)) {
+      server.send(JSON.stringify({ error: "Unknown type" }));
+      return;
+    }
+    if (!msg.data || !msg.data.sdp || !Array.isArray(msg.data.ice)) {
+      server.send(JSON.stringify({ error: "Missing or invalid sdp/ice" }));
+      return;
+    }
+
+    // Re-fetch the record to avoid overwriting changes
+    let freshRecord = await env.PORTAL_KV.get(roomId, { type: "json" });
+    if (!freshRecord) {
+      freshRecord = {
+        activeCount: 1,
+        offer: null,
+        answer: null,
+        firstWriter: null,
+        updatedAt: Date.now(),
+      };
+    }
+
+    // Handle concurrency: if there's no firstWriter, set it
+    if (!freshRecord.firstWriter) {
+      freshRecord.firstWriter = msg.type === "offer" ? "offer" : "answer";
+    }
+
+    // If the second client also tries to store an offer, but an offer is already there:
+    if (msg.type === "offer" && freshRecord.offer) {
+      // This means we already have an offer. The second client should be an answerer.
+      server.send(
+        JSON.stringify({
+          error: "Offer already exists. You must send an answer or handle concurrency differently.",
+        })
       );
+      return;
     }
-  }
+    // Similarly, if we had an answer but someone tries to store an answer again as first writer:
+    if (msg.type === "answer" && freshRecord.answer && !freshRecord.offer) {
+      server.send(
+        JSON.stringify({
+          error: "We have an answer but no offer? Possibly a concurrency issue.",
+        })
+      );
+      return;
+    }
 
-  removeConnection(ip, server) {
-    console.log("Connection closed:", ip);
-    const servers = this.connectionState.get(ip);
-    this.connectionState.set(
-      ip,
-      servers.filter((conn) => conn !== server)
-    );
-  }
+    // Set or update the appropriate property
+    if (msg.type === "offer") {
+      freshRecord.offer = {
+        sdp: msg.data.sdp,
+        ice: msg.data.ice,
+      };
+    } else if (msg.type === "answer") {
+      freshRecord.answer = {
+        sdp: msg.data.sdp,
+        ice: msg.data.ice,
+      };
+    }
 
-  getPeers(ip, server) {
-    return this.connectionState
-      .get(ip)
-      .map((conn) => conn.server)
-      .filter((conn) => conn !== server);
-  }
+    freshRecord.updatedAt = Date.now();
+    await env.PORTAL_KV.put(roomId, JSON.stringify(freshRecord));
+
+    // Acknowledge
+    server.send(JSON.stringify({ ok: true, type: msg.type + "-stored" }));
+  });
+
+  server.addEventListener("close", async () => {
+    // Stop polling
+    stopPolling();
+
+    // Decrement activeCount
+    let rec = await env.PORTAL_KV.get(roomId, { type: "json" });
+    if (!rec) rec = { activeCount: 1, offer: null, answer: null, firstWriter: null };
+    rec.activeCount = Math.max(0, (rec.activeCount || 1) - 1);
+
+    // If no more active connections, wipe the record
+    if (rec.activeCount === 0) {
+      await env.PORTAL_KV.delete(roomId);
+    } else {
+      rec.updatedAt = Date.now();
+      await env.PORTAL_KV.put(roomId, JSON.stringify(rec));
+    }
+  });
+
+  return new Response(null, { status: 101, webSocket: client });
 }
 
-const connectionsManager = new ConnectionsManager();
+/**
+ * Polls the KV store every 2 seconds.
+ * If it detects changes in 'offer' or 'answer', it sends them to the client.
+ */
+function startPollingKV(env, roomId, initialRecord, server) {
+  let isStopped = false;
+  let lastOffer = initialRecord.offer;
+  let lastAnswer = initialRecord.answer;
 
-addEventListener("fetch", (event) => {
-  const url = new URL(event.request.url);
+  const intervalId = setInterval(async () => {
+    if (isStopped) return;
 
-  if (url.pathname === "/ws" && event.request.headers.get("Upgrade") === "websocket") {
-    event.respondWith(handleWebSocket(event.request));
-    return;
-  } else if (url.pathname === "/ws") {
-    event.respondWith(new Response("Connect with websockets", { status: 200 }));
-    return;
-  }
+    let rec = await env.PORTAL_KV.get(roomId, { type: "json" });
+    if (!rec) {
+      // Possibly cleared
+      server.send(JSON.stringify({ info: "Room data cleared. Possibly other client disconnected." }));
+      return;
+    }
 
-  event.respondWith(new Response("Not found", { status: 404 }));
-});
+    // Check if there's a new or updated offer
+    const isOfferChanged = JSON.stringify(rec.offer) !== JSON.stringify(lastOffer);
+    if (isOfferChanged && rec.offer) {
+      lastOffer = rec.offer;
+      server.send(JSON.stringify({ type: "offer", data: rec.offer }));
+    }
 
-async function handleWebSocket(request) {
-  const ip = request.headers.get("CF-Connecting-IP") || "unknown";
+    // Check if there's a new or updated answer
+    const isAnswerChanged = JSON.stringify(rec.answer) !== JSON.stringify(lastAnswer);
+    if (isAnswerChanged && rec.answer) {
+      lastAnswer = rec.answer;
+      server.send(JSON.stringify({ type: "answer", data: rec.answer }));
+    }
+  }, 2000);
 
-  const [client, server] = Object.values(new WebSocketPair());
-  server.accept(); // Accept the server side
-
-  connectionsManager.addConnection(ip, server);
-
-  // Broadcast any incoming message to all others on the same IP
-  server.addEventListener("message", (event) => {
-    const peers = connectionsManager.getPeers(ip, server);
-    console.log("Received message:", ip, "peers:", peers.length);
-    peers.forEach((conn) => {
-      conn.send(event.data);
-    });
-  });
-
-  // Clean up when a connection closes
-  server.addEventListener("close", () => {
-    connectionsManager.removeConnection(ip, server);
-  });
-
-  // Return the client side of the pair to the browser
-  return new Response(null, {
-    status: 101,
-    webSocket: client,
-  });
+  return () => {
+    isStopped = true;
+    clearInterval(intervalId);
+  };
 }

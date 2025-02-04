@@ -1,293 +1,162 @@
-/****************************** 
-  Configuration 
-******************************/
-const SIGNALING_URL = "wss://signal.portl.cam/ws";
-// Replace with your actual Worker subdomain if needed.
+const WS_URL = "wss://signal.example.com/ws"; // Your Worker route
+let ws;
+let pc;
+let localStream;
+let role = null; // "offerer" or "answerer"
 
-const ICE_CONFIG = {
-  iceServers: [
-    { urls: "stun:stun.l.google.com:19302" },
-    // Add a TURN server here if needed for NAT traversal (probably not needed on LAN).
-  ],
+const logEl = document.getElementById("log");
+function log(msg) {
+  console.log(msg);
+  logEl.textContent += msg + "\n";
+}
+
+document.getElementById("startBtn").onclick = async () => {
+  document.getElementById("startBtn").disabled = true;
+  try {
+    await startConnection();
+  } catch (err) {
+    log("Error: " + err);
+    document.getElementById("startBtn").disabled = false;
+  }
 };
 
-/******************************
-  Global Variables
-******************************/
-let pc; // RTCPeerConnection
-let localStream; // MediaStream from getUserMedia
-let ws; // WebSocket to Cloudflare Worker
-let dataChannel; // RTCDataChannel for ring, morse, messages
-let isVideoEnabled = true;
-let isAudioEnabled = true;
-let beepPlaying = false;
-
-/******************************
-  DOM Elements
-******************************/
-const localVideo = document.getElementById("localVideo");
-const remoteVideo = document.getElementById("remoteVideo");
-const btnToggleVideo = document.getElementById("btnToggleVideo");
-const btnToggleAudio = document.getElementById("btnToggleAudio");
-const btnRing = document.getElementById("btnRing");
-const btnMorse = document.getElementById("btnMorse");
-const txtMessage = document.getElementById("txtMessage");
-const btnSend = document.getElementById("btnSend");
-const messageBubble = document.getElementById("messageBubble");
-const ringAudio = document.getElementById("ringAudio");
-const beepAudio = document.getElementById("beepAudio");
-
-/******************************
-  Initialize 
-******************************/
-init();
-
-async function init() {
-  // Start media (we don't display it locally; just send it to the peer)
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-  } catch (err) {
-    console.error("Error getting user media:", err);
+document.getElementById("disconnectBtn").onclick = () => {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.close();
+    log("Manually closed WebSocket.");
   }
+};
 
-  // Connect WebSocket (auto-reconnect on failure)
-  connectWebSocket();
+async function startConnection() {
+  log("Requesting local media...");
+  localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  // document.getElementById("localVideo").srcObject = localStream;
 
-  // Wire up UI events
-  btnToggleVideo.addEventListener("click", toggleVideo);
-  btnToggleAudio.addEventListener("click", toggleAudio);
-  btnRing.addEventListener("click", sendRing);
-  btnMorse.addEventListener("mousedown", startMorse);
-  btnMorse.addEventListener("mouseup", stopMorse);
-  // For touchscreen
-  btnMorse.addEventListener("touchstart", startMorse);
-  btnMorse.addEventListener("touchend", stopMorse);
-  btnSend.addEventListener("click", sendMessage);
+  // Create RTCPeerConnection
+  pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+  localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
 
-  messageBubble.addEventListener("click", () => {
-    messageBubble.style.display = "none";
+  pc.ontrack = (evt) => {
+    log("Received remote track.");
+    document.getElementById("remoteVideo").srcObject = evt.streams[0];
+  };
+
+  // We'll gather ICE up front
+  const iceCandidates = [];
+  pc.onicecandidate = (evt) => {
+    if (evt.candidate) {
+      iceCandidates.push(evt.candidate);
+    }
+  };
+
+  // We'll decide if we are "offerer" or "answerer" once we see if there's an existing offer in KV.
+  // But the Worker doesn't directly tell us "there is/no existing offer" until it sees an update.
+  // We'll do a small trick: we'll create the offer anyway, but hold off sending it until we see if
+  // the Worker pushes an offer to us.
+
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+
+  // Wait 2s for ICE
+  await waitForIce(pc);
+
+  const fullOffer = {
+    sdp: pc.localDescription.sdp,
+    ice: iceCandidates,
+  };
+
+  // Connect WebSocket
+  ws = new WebSocket(WS_URL);
+  ws.addEventListener("open", () => {
+    log("WebSocket connected. We'll wait 2s to see if we get an existing offer from the Worker...");
+    document.getElementById("disconnectBtn").disabled = false;
+    // We'll do a short delay to see if the Worker pushes an existing offer
+    setTimeout(() => {
+      // If we haven't received an offer yet, we become the "offerer"
+      if (!role) {
+        role = "offerer";
+        log("No existing offer arrived; sending my offer...");
+        ws.send(JSON.stringify({ type: "offer", data: fullOffer }));
+      }
+    }, 2000);
+  });
+
+  ws.addEventListener("message", async (evt) => {
+    const msg = JSON.parse(evt.data);
+
+    if (msg.error) {
+      log("WS error: " + msg.error);
+      // If it's "Offer already exists" -> we might reload or become answerer
+      return;
+    }
+    if (msg.info) {
+      log("WS info: " + msg.info);
+      return;
+    }
+
+    if (msg.type === "offer" && !role) {
+      // We discovered there's already an offer => we must be answerer
+      role = "answerer";
+      log("Received existing offer from Worker. I'm the answerer now.");
+
+      // Set that remote offer
+      await pc.setRemoteDescription({ type: "offer", sdp: msg.data.sdp });
+      // Add their ICE
+      for (let c of msg.data.ice) {
+        await pc.addIceCandidate(c);
+      }
+
+      // Now gather my ICE fully as well
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      const localIce = [];
+      pc.onicecandidate = (evt) => {
+        if (evt.candidate) localIce.push(evt.candidate);
+      };
+
+      await waitForIce(pc);
+      const fullAnswer = {
+        sdp: pc.localDescription.sdp,
+        ice: localIce,
+      };
+
+      ws.send(JSON.stringify({ type: "answer", data: fullAnswer }));
+      log("Sent answer. Now we wait for them to see it in KV and finalize P2P.");
+    } else if (msg.type === "answer") {
+      // I am the offerer, I receive an answer
+      log("Received answer from Worker. Setting remote description...");
+      await pc.setRemoteDescription({ type: "answer", sdp: msg.data.sdp });
+      for (let c of msg.data.ice) {
+        await pc.addIceCandidate(c);
+      }
+      log("Answer applied. P2P established!");
+    }
+  });
+
+  ws.addEventListener("close", () => {
+    log("WebSocket closed by server or manual request.");
+    document.getElementById("disconnectBtn").disabled = true;
+  });
+
+  ws.addEventListener("error", (err) => {
+    log("WebSocket error: " + err);
   });
 }
 
-/******************************
-  WebSocket Handling
-******************************/
-function connectWebSocket() {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    return;
-  }
-  ws = new WebSocket(SIGNALING_URL);
-
-  ws.onopen = () => {
-    console.log("WebSocket connected");
-    setupPeerConnection();
-  };
-
-  ws.onmessage = (evt) => {
-    // We receive the raw message from the Worker, which is from the other peer
-    const data = JSON.parse(evt.data);
-    handleSignal(data);
-  };
-
-  ws.onclose = () => {
-    console.warn("WebSocket closed. Reconnecting in 3s...");
-    setTimeout(connectWebSocket, 3000);
-  };
-
-  ws.onerror = (err) => {
-    console.error("WebSocket error:", err);
-    ws.close();
-  };
-}
-
-function sendSignal(msg) {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(msg));
-  }
-}
-
-/******************************
-  Peer Connection Setup 
-******************************/
-function setupPeerConnection() {
-  pc = new RTCPeerConnection(ICE_CONFIG);
-
-  // Add local tracks so the other side can see/hear us
-  if (localStream) {
-    localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
-  }
-
-  // Create data channel for ring/morse/messages
-  dataChannel = pc.createDataChannel("portalChannel");
-  dataChannel.onmessage = (e) => onDataChannelMessage(e.data);
-
-  pc.onicecandidate = (event) => {
-    if (event.candidate) {
-      sendSignal({ candidate: event.candidate });
-    }
-  };
-
-  pc.ontrack = (event) => {
-    // Attach the remote's stream to our video element
-    remoteVideo.srcObject = event.streams[0];
-  };
-
-  pc.onconnectionstatechange = () => {
-    console.log("PC state:", pc.connectionState);
-    if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
-      // Attempt renegotiation or refresh
-      renegotiate();
-    }
-  };
-
-  pc.ondatachannel = (event) => {
-    // If the other peer created the channel, we get it here
-    const channel = event.channel;
-    channel.onmessage = (e) => onDataChannelMessage(e.data);
-  };
-
-  // Initiate an offer to connect
-  renegotiate();
-  console.log("PC created");
-}
-
-/******************************
-  Negotiation Logic 
-******************************/
-async function renegotiate() {
-  try {
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    sendSignal({ sdp: pc.localDescription });
-  } catch (err) {
-    console.error("Error in renegotiate:", err);
-  }
-}
-
-async function handleSignal(data) {
-  // Remote ICE candidate
-  if (data.candidate) {
-    try {
-      await pc.addIceCandidate(data.candidate);
-    } catch (err) {
-      console.error("Error adding ice candidate:", err);
-    }
-  } else if (data.sdp) {
-    // Remote SDP (offer/answer)
-    try {
-      const remoteDesc = new RTCSessionDescription(data.sdp);
-      await pc.setRemoteDescription(remoteDesc);
-
-      if (remoteDesc.type === "offer") {
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        sendSignal({ sdp: pc.localDescription });
+function waitForIce(pc) {
+  return new Promise((resolve) => {
+    let done = false;
+    pc.onicegatheringstatechange = () => {
+      if (pc.iceGatheringState === "complete" && !done) {
+        done = true;
+        resolve();
       }
-    } catch (err) {
-      console.error("Error setting remote SDP:", err);
-    }
-  } else {
-    console.warn("Unknown signal:", data);
-  }
-}
-
-/******************************
-  Data Channel: ring, morse, messages
-******************************/
-function onDataChannelMessage(message) {
-  console.log("Received message:", message);
-
-  let msgObj;
-  try {
-    msgObj = JSON.parse(message);
-  } catch {
-    console.warn("Received non-JSON data on channel:", message);
-    return;
-  }
-
-  switch (msgObj.type) {
-    case "ring":
-      playRing();
-      break;
-    case "morseStart":
-      startBeep();
-      break;
-    case "morseStop":
-      stopBeep();
-      break;
-    case "text":
-      showMessage(msgObj.text);
-      break;
-    default:
-      console.warn("Unknown message type:", msgObj.type);
-  }
-}
-
-function sendDataChannelMessage(obj) {
-  if (dataChannel && dataChannel.readyState === "open") {
-    dataChannel.send(JSON.stringify(obj));
-  }
-}
-
-/******************************
-  Ring & Morse 
-******************************/
-function sendRing() {
-  sendDataChannelMessage({ type: "ring" });
-}
-function playRing() {
-  ringAudio.currentTime = 0;
-  ringAudio.play().catch((err) => console.error("Ring play error:", err));
-}
-
-function startMorse() {
-  sendDataChannelMessage({ type: "morseStart" });
-}
-function stopMorse() {
-  sendDataChannelMessage({ type: "morseStop" });
-}
-
-function startBeep() {
-  if (!beepPlaying) {
-    beepPlaying = true;
-    beepAudio.currentTime = 0;
-    beepAudio.play().catch((err) => console.error("Beep play error:", err));
-  }
-}
-function stopBeep() {
-  beepPlaying = false;
-  beepAudio.pause();
-  beepAudio.currentTime = 0;
-}
-
-/******************************
-  Send & Show Text Messages
-******************************/
-function sendMessage() {
-  const text = txtMessage.value.trim();
-  if (!text) return;
-  txtMessage.value = "";
-  sendDataChannelMessage({ type: "text", text });
-}
-
-function showMessage(text) {
-  messageBubble.textContent = text;
-  messageBubble.style.display = "block";
-}
-
-/******************************
-  Audio/Video Toggles
-******************************/
-function toggleVideo() {
-  if (!localStream) return;
-  isVideoEnabled = !isVideoEnabled;
-  localStream.getVideoTracks().forEach((track) => (track.enabled = isVideoEnabled));
-  btnToggleVideo.textContent = isVideoEnabled ? "Video On" : "Video Off";
-}
-
-function toggleAudio() {
-  if (!localStream) return;
-  isAudioEnabled = !isAudioEnabled;
-  localStream.getAudioTracks().forEach((track) => (track.enabled = isAudioEnabled));
-  btnToggleAudio.textContent = isAudioEnabled ? "Audio On" : "Audio Off";
+    };
+    setTimeout(() => {
+      if (!done) {
+        done = true;
+        resolve();
+      }
+    }, 2000);
+  });
 }

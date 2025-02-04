@@ -2,93 +2,35 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Portal - portl.cam</title>
+    <title>Bulletproof WebRTC Client</title>
     <style>
-      * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-        font-family: sans-serif;
-      }
-
       body {
-        background: #333;
-        color: #fff;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        height: 100vh;
-        overflow: hidden;
+        font-family: sans-serif;
+        margin: 2rem;
       }
-
-      #videos {
-        position: relative;
-        width: 100%;
-        flex: 1;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-      }
-
-      /* We only have one remote video now */
       video {
-        max-width: 100%;
-        max-height: 100%;
-        background: #000;
-      }
-
-      #controls {
-        background: rgba(0, 0, 0, 0.6);
-        padding: 0.5em;
-        width: 100%;
-        display: flex;
-        justify-content: center;
-        gap: 0.5em;
-      }
-
-      button,
-      input[type="text"] {
-        font-size: 1rem;
-        padding: 0.4em;
-      }
-
-      #messageBubble {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: rgba(255, 255, 255, 0.8);
-        color: #000;
-        padding: 1em;
-        border-radius: 0.5em;
-        display: none;
-        max-width: 80%;
-        cursor: pointer;
-        word-wrap: break-word;
+        width: 320px;
+        background: #333;
+        margin-right: 1rem;
       }
     </style>
   </head>
   <body>
-    <div id="videos">
-      <!-- Only remote video now -->
+    <h1>Bulletproof WebRTC Client (By IP)</h1>
+    <p>
+      This page automatically tries to connect with another user on the same IP. The first to store an offer becomes
+      "offerer"; the second must answer.
+    </p>
+
+    <button id="startBtn">Start Connection</button>
+    <button id="disconnectBtn" disabled>Disconnect from Worker</button>
+    <div>
+      <!-- <h3>Local Stream</h3>
+      <video id="localVideo" autoplay muted playsinline></video> -->
+      <h3>Remote Stream</h3>
       <video id="remoteVideo" autoplay playsinline></video>
-      <div id="messageBubble"></div>
     </div>
 
-    <div id="controls">
-      <button id="btnToggleVideo">Video On</button>
-      <button id="btnToggleAudio">Audio On</button>
-      <button id="btnRing">Ring</button>
-      <button id="btnMorse">Morse</button>
-      <input type="text" id="txtMessage" placeholder="Type message" />
-      <button id="btnSend">Send</button>
-    </div>
-
-    <!-- Placeholder audios (played when we receive ring/morse messages) -->
-    <audio id="ringAudio" src="audios/ring.mp3" preload="auto"></audio>
-    <audio id="beepAudio" src="audios/beep.mp3" preload="auto" loop></audio>
-
-    <!-- Main logic -->
-    <script src="./app.js"></script>
+    <pre id="log" style="border: 1px solid #ddd; padding: 1rem; margin-top: 1rem"></pre>
   </body>
 </html>
