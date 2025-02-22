@@ -67,13 +67,19 @@ class Room {
   }
 
   removeDeadClients() {
-    const now = Date.now();
-    Object.entries(this.clients).forEach(([clientId, client]) => {
-      if (now - client.updatedAt > 20000) {
-        console.log(`Removing dead client ${clientId}`);
-        delete this.clients[clientId];
+    // limit the number of clients to 2
+    const clients = Object.entries(this.clients);
+    if (clients.length > 2) {
+      // Sort clients by joinedAt timestamp
+      clients.sort(([, a], [, b]) => a.joinedAt - b.joinedAt);
+      
+      // Remove oldest clients until we reach maxClients
+      const clientsToRemove = clients.slice(0, clients.length - 2);
+      for (const [clientId, client] of clientsToRemove) {
+        console.log(`Removing dead client ${clientId} (${client.role})`);
+        this.removeClient(clientId);
       }
-    });
+    }
   }
 
   removeClient(clientId) {
@@ -103,12 +109,6 @@ class Room {
     this.answer = answer;
   }
 
-  heartbeatClient(clientId) {
-    if (this.clients[clientId]) {
-      this.clients[clientId].updatedAt = Date.now();
-    }
-  }
-
   toJSON() {
     return JSON.stringify({
       clients: this.clients,
@@ -128,6 +128,33 @@ class Room {
 }
 
 async function handleWebSocket(request, env) {
+  // console.counts = []; // code for counting KV operations
+  // console.count = ((label) => {
+  //   console.log(`${label}: ${console?.counts?.[label] || 0}`);
+  //   console.counts[label] = (console?.counts?.[label] || 0) + 1;
+  // });
+
+  // env.PORTAL_KV = new Proxy(env.PORTAL_KV, {
+  //   // log actions
+  //   get(target, prop) {
+  //     if (typeof target[prop] === "function") {
+  //       return async (...args) => {
+  //         console.count(`KV.${prop}(${args.join(", ")})`);
+  //         return target[prop](...args);
+  //       };
+  //     }
+  //     return target[prop];
+  //   },
+  //   put: async (key, value) => {
+  //     console.count(`KV.put(${key})`);
+  //     return env.PORTAL_KV.put(key, value);
+  //   },
+  //   delete: async (key) => {
+  //     console.count(`KV.delete(${key})`);
+  //     return env.PORTAL_KV.delete(key);
+  //   }
+  // });
+  
   const [client, server] = Object.values(new WebSocketPair());
   
   try {
@@ -181,17 +208,11 @@ async function handleWebSocket(request, env) {
           }
           
           lastRoomState = currentRoomState;
-        }
-        
-        // Update client heartbeat
-        room = new Room(currentRoomState);
-        room.heartbeatClient(clientId);
-        await env.PORTAL_KV.put(roomId, room.toJSON());
-        
+        }        
       } catch (error) {
         console.error("Polling error:", error);
       }
-    }, 1000); // Poll every second
+    }, 2000); // Poll every second
 
     // Handle messages
     server.addEventListener("message", async evt => {

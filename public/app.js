@@ -691,6 +691,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             document.getElementById("videoStatus").textContent = "";
             // Play connect sound
             connectSound.play().catch((err) => log("Error playing sound: " + err.message));
+            ws.close();
             break;
 
           case "disconnected":
