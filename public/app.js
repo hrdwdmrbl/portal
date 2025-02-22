@@ -9,6 +9,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   let isReconnecting = false;
   let videoCheckInterval;
   let dataChannel = null;
+  let reconnectionTimeout;
 
   // Add track state variables
   let videoEnabled = true;
@@ -96,6 +97,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Modify the cleanupConnection function to not reset media states
   async function cleanupConnection() {
+    clearTimeout(reconnectionTimeout);
+
     if (videoCheckInterval) {
       ws.onclose = null; // Remove onclose handler to prevent reconnection
       ws.close();
