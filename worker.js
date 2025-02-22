@@ -69,7 +69,7 @@ class Room {
   removeDeadClients() {
     const now = Date.now();
     Object.entries(this.clients).forEach(([clientId, client]) => {
-      if (now - client.updatedAt > 20000) {
+      if (now - client.updatedAt > 220000) {
         console.log(`Removing dead client ${clientId}`);
         delete this.clients[clientId];
       }
@@ -182,17 +182,18 @@ async function handleWebSocket(request, env) {
           
           lastRoomState = currentRoomState;
         }
-        
-        // Update client heartbeat
-        room = new Room(currentRoomState);
-        room.heartbeatClient(clientId);
-        await env.PORTAL_KV.put(roomId, room.toJSON());
-        
       } catch (error) {
         console.error("Polling error:", error);
       }
     }, 1000); // Poll every second
 
+    const heartbeatInterval = setInterval(async () => {
+      // Update client heartbeat
+      const roomState = await env.PORTAL_KV.get(roomId);
+      room = new Room(roomState);
+      room.heartbeatClient(clientId);
+      await env.PORTAL_KV.put(roomId, room.toJSON());
+    }, 200000);
     // Handle messages
     server.addEventListener("message", async evt => {
       const msg = JSON.parse(evt.data);
@@ -215,7 +216,8 @@ async function handleWebSocket(request, env) {
     // Clean up on close
     server.addEventListener("close", async () => {
       clearInterval(pollInterval);
-      
+      clearInterval(heartbeatInterval);
+
       // Get latest room state and remove client
       room = new Room(await env.PORTAL_KV.get(roomId));
       room.removeClient(clientId);
@@ -225,7 +227,8 @@ async function handleWebSocket(request, env) {
     // Add error handler
     server.addEventListener("error", async () => {
       clearInterval(pollInterval);
-      
+      clearInterval(heartbeatInterval);
+
       // Get latest room state and remove client
       room = new Room(await env.PORTAL_KV.get(roomId));
       room.removeClient(clientId);
