@@ -29,18 +29,25 @@ video {
   width: 100%;
   background: #111;
 }
+
 #localVideo {
   position: absolute;
   bottom: 2rem;
-  right: 2rem;
+  right: -245px;
   width: 240px;
   height: 135px;
   object-fit: cover;
   border: 2px solid #444;
-  border-radius: 4px;
+  border-radius: 4px 0 0 4px;
   display: block;
-  z-index: 10; /* Add z-index to keep video above controls */
+  z-index: 10;
+  transition: right 0.3s ease;
 }
+
+#localVideo.visible {
+  right: 0;
+}
+
 .status {
   position: absolute;
   top: 1rem;
@@ -330,6 +337,118 @@ video {
   box-sizing: border-box; /* Include padding in width calculation */
 }
 
+.fullscreen-button {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 10;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.3s ease;
+}
+
+.fullscreen-button:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.fullscreen-button svg {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+}
+
+.fullscreen-button.active {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Add fullscreen styles for controls visibility */
+.video-container:-webkit-full-screen .controls {
+  position: fixed;
+  bottom: 2rem;
+  left: 2rem;
+  z-index: 2147483647;
+}
+
+.video-container:-moz-full-screen .controls {
+  position: fixed;
+  bottom: 2rem;
+  left: 2rem;
+  z-index: 2147483647;
+}
+
+.video-container:fullscreen .controls {
+  position: fixed;
+  bottom: 2rem;
+  left: 2rem;
+  z-index: 2147483647;
+}
+
+/* Ensure fullscreen button shows on hover */
+.fullscreen-button.active:hover {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Add hover trigger area */
+.video-container::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 80px;
+  height: 80px;
+  z-index: 9;
+}
+
+.video-container::before:hover + .fullscreen-button.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Add toggle button styles */
+#toggleLocalVideo {
+  position: absolute;
+  bottom: 2rem;
+  right: 0;
+  width: 40px;
+  height: 139px; /* Match local video height */
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid #444;
+  border-right: none;
+  border-radius: 4px 0 0 4px;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9;
+  transition: right 0.3s ease;
+}
+
+#toggleLocalVideo svg {
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+  transform: rotate(180deg); /* Point left by default */
+}
+
+#toggleLocalVideo.visible {
+  right: 240px; /* Move with video */
+}
+
+#toggleLocalVideo.visible svg {
+  transform: rotate(0deg); /* Point right when visible */
+}
+
 /* Update media queries to use vh units */
 @media (max-width: 900px) {
   #localVideo {
@@ -341,6 +460,10 @@ video {
     right: 1rem;
     max-width: calc(100vw - 2rem);
   }
+
+  #toggleLocalVideo {
+    bottom: calc(2rem + 80px);
+  }
 }
 
 /* Update media queries to use vh units */
@@ -349,6 +472,7 @@ video {
     bottom: calc(4rem + 80px); /* Move above controls */
     width: 160px; /* Smaller local video on mobile */
     height: 90px;
+    right: -160px;
   }
 
   .controls {
@@ -361,5 +485,14 @@ video {
   .message-container {
     max-width: 100%;
     /* min-width: 150px; */
+  }
+
+  #toggleLocalVideo {
+    bottom: calc(4rem + 80px);
+    height: 90px;
+  }
+
+  #toggleLocalVideo.visible {
+    right: 160px;
   }
 }

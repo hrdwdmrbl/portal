@@ -8,62 +8,74 @@
     <script type="module" src="app.js"></script>
   </head>
   <body>
-    <div class="video-container">
-      <video id="remoteVideo" autoplay playsinline></video>
-      <video id="localVideo" autoplay muted playsinline></video>
-      
-      <div class="status">
-        <span class="status-light" id="localLight"></span>
-        <span>Local</span>
-        <span class="status-light disconnected" id="remoteLight"></span>
-        <span>Remote</span>
-        <span id="videoStatus"></span>
-      </div>
-    </div>
-
-    <div class="controls">
-      <button id="videoToggle" class="control-button">
-        <svg viewBox="0 0 24 24">
-          <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
-        </svg>
-        <span class="on">Camera</span>
-      </button>
-      <button id="audioToggle" class="control-button">
-        <svg viewBox="0 0 24 24">
-          <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
-          <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
-        </svg>
-        <span class="on">Mic</span>
-      </button>
-      <button id="ringButton" class="control-button">
-        <svg viewBox="0 0 24 24">
-          <path d="M20.1 7.7l-1 1c1.8 1.8 1.8 4.6 0 6.5l1 1c2.5-2.3 2.5-6.1 0-8.5zM18 9.8l-1 1c.5.7.5 1.6 0 2.3l1 1c1.2-1.2 1.2-3 0-4.3zM14 1h-4c-.6 0-1 .4-1 1v20c0 .6.4 1 1 1h4c.6 0 1-.4 1-1V2c0-.6-.4-1-1-1z"/>
-        </svg>
-      </button>
-      <button id="morseButton" class="control-button">
-        <svg viewBox="0 0 24 24">
-          <path d="M3.24 6.15C2.51 6.43 2 7.17 2 8v12c0 1.1.89 2 2 2h16c1.11 0 2-.9 2-2V8c0-1.11-.89-2-2-2H8.3l8.26-3.34L15.88 1 3.24 6.15zM7 20c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm13-8h-2v-2h-2v2h-2v2h2v2h2v-2h2v-2z"/>
-        </svg>
-      </button>
-
-      <div class="message-container">
-        <input 
-          type="text" 
-          id="messageInput" 
-          placeholder="Type a message..." 
-          autocomplete="off"
-          autocapitalize="off"
-          autocorrect="off"
-          spellcheck="false"
-        />
-        <button id="sendButton" aria-label="Send message">
-          <svg viewBox="0 0 24 24" width="16" height="16">
-            <path fill="currentColor" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+    <div class="main">
+      <div class="video-container">
+        <button id="fullscreenToggle" class="fullscreen-button">
+          <svg viewBox="0 0 24 24">
+            <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
           </svg>
         </button>
+        <video id="remoteVideo" autoplay playsinline></video>
+        <button id="toggleLocalVideo">
+          <svg viewBox="0 0 24 24">
+            <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+          </svg>
+        </button>
+        <video id="localVideo" autoplay muted playsinline class="visible"></video>
+        
+        <div class="status">
+          <span class="status-light" id="localLight"></span>
+          <span>Local</span>
+          <span class="status-light disconnected" id="remoteLight"></span>
+          <span>Remote</span>
+          <span id="videoStatus"></span>
+        </div>
       </div>
+  
+      <div class="controls">
+        <button id="videoToggle" class="control-button">
+          <svg viewBox="0 0 24 24">
+            <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+          </svg>
+          <span class="on">Camera</span>
+        </button>
+        <button id="audioToggle" class="control-button">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+            <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+          </svg>
+          <span class="on">Mic</span>
+        </button>
+        <button id="ringButton" class="control-button">
+          <svg viewBox="0 0 24 24">
+            <path d="M20.1 7.7l-1 1c1.8 1.8 1.8 4.6 0 6.5l1 1c2.5-2.3 2.5-6.1 0-8.5zM18 9.8l-1 1c.5.7.5 1.6 0 2.3l1 1c1.2-1.2 1.2-3 0-4.3zM14 1h-4c-.6 0-1 .4-1 1v20c0 .6.4 1 1 1h4c.6 0 1-.4 1-1V2c0-.6-.4-1-1-1z"/>
+          </svg>
+        </button>
+        <button id="morseButton" class="control-button">
+          <svg viewBox="0 0 24 24">
+            <path d="M3.24 6.15C2.51 6.43 2 7.17 2 8v12c0 1.1.89 2 2 2h16c1.11 0 2-.9 2-2V8c0-1.11-.89-2-2-2H8.3l8.26-3.34L15.88 1 3.24 6.15zM7 20c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm13-8h-2v-2h-2v2h-2v2h2v2h2v-2h2v-2z"/>
+          </svg>
+        </button>
+  
+        <div class="message-container">
+          <input 
+            type="text" 
+            id="messageInput" 
+            placeholder="Type a message..." 
+            autocomplete="off"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+          />
+          <button id="sendButton" aria-label="Send message">
+            <svg viewBox="0 0 24 24" width="16" height="16">
+              <path fill="currentColor" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+  
+      <div class="messages" id="messages"></div>
     </div>
-
-    <div class="messages" id="messages"></div>
   </body>
 </html>

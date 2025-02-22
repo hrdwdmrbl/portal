@@ -23,6 +23,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   let errorSound = new Audio("audios/error.mp3");
   let connectSound = new Audio("audios/join.mp3");
 
+  let localVideoVisible = true;
+
   const morseButton = document.getElementById("morseButton");
   const ringButton = document.getElementById("ringButton");
   const messageInput = document.getElementById("messageInput");
@@ -32,6 +34,43 @@ document.addEventListener("DOMContentLoaded", async () => {
     e.preventDefault();
     messageInput.focus();
   };
+
+  // Add fullscreen button handler
+  const fullscreenToggle = document.getElementById("fullscreenToggle");
+  const videoContainer = document.querySelector("body");
+
+  async function toggleFullscreen() {
+    if (!document.fullscreenElement) {
+      try {
+        await videoContainer.requestFullscreen();
+        fullscreenToggle.classList.add("active");
+      } catch (err) {
+        console.log(err)
+        log("Error attempting to enable fullscreen:", err.message);
+      }
+    } else {
+      try {
+        await document.exitFullscreen();
+        fullscreenToggle.classList.remove("active");
+      } catch (err) {
+        log("Error attempting to exit fullscreen:", err.message);
+      }
+    }
+  }
+
+  // Handle fullscreen change events
+  document.addEventListener("fullscreenchange", () => {
+    if (!document.fullscreenElement) {
+      fullscreenToggle.classList.remove("active");
+    }
+  });
+
+  // Add click and touch handlers for fullscreen button
+  fullscreenToggle.addEventListener("click", toggleFullscreen);
+  fullscreenToggle.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    toggleFullscreen();
+  }, { passive: false });
 
   // Update the log function
   function log(msg, type = "system") {
@@ -99,7 +138,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   async function cleanupConnection() {
     clearTimeout(reconnectionTimeout);
 
-    if (videoCheckInterval) {
+    if (videoCheckInterval && ws) {
       ws.onclose = null; // Remove onclose handler to prevent reconnection
       ws.close();
       ws = null;
@@ -562,10 +601,12 @@ document.addEventListener("DOMContentLoaded", async () => {
               sendOffer();
 
               // Set timeout to resend offer if no answer received
-              const offerTimeout = setTimeout(() => {
-                if (pc.currentRemoteDescription === null) {
+              const offerResendInterval = setInterval(() => {
+                if (pc == null || pc.currentRemoteDescription === null) {
                   log("No answer received, resending offer...");
                   sendOffer();
+                } else {
+                  clearInterval(offerResendInterval);
                 }
               }, 5000);
 
@@ -574,7 +615,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               ws.onmessage = async (evt) => {
                 const msg = JSON.parse(evt.data);
                 if (msg.type === "answer") {
-                  clearTimeout(offerTimeout);
+                  clearTimeout(offerResendInterval);
                 }
                 await originalOnMessage(evt);
               };
@@ -689,7 +730,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             remoteLight.classList.add("active");
             remoteLight.classList.remove("disconnected");
             document.getElementById("videoStatus").textContent = "";
-            // Play connect sound
+            // Hide local video on connection
+            if (localVideoVisible) {
+              toggleLocalVideoVisibility();
+            }
             connectSound.play().catch((err) => log("Error playing sound: " + err.message));
             ws.close();
             break;
@@ -870,4 +914,19 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     log(`Connection lost${reason ? `: ${reason}` : ""}, attempting to reconnect...`);
   }
+
+  function toggleLocalVideoVisibility(e) {
+    if (e) e.preventDefault();
+    
+    const localVideo = document.getElementById("localVideo");
+    const toggleButton = document.getElementById("toggleLocalVideo");
+    
+    localVideoVisible = !localVideoVisible;
+    
+    localVideo.classList.toggle("visible", localVideoVisible);
+    toggleButton.classList.toggle("visible", localVideoVisible);
+  }
+
+  document.getElementById("toggleLocalVideo").addEventListener("click", toggleLocalVideoVisibility);
+  document.getElementById("toggleLocalVideo").addEventListener("touchstart", toggleLocalVideoVisibility, { passive: false });
 });
