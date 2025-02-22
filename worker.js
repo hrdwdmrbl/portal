@@ -20,320 +20,226 @@ async function handleReset(request, env) {
 }
 
 class Room {
-  constructor(existingRoom) {
-    existingRoom ||= {};
-    this.clients = existingRoom.clients || {};
-    this.offer = existingRoom.offer || null;
-    this.answer = existingRoom.answer || null;
-    this.updatedAt = existingRoom.updatedAt || Date.now();
+  constructor(existingRoom = {}) {
+    // Parse the JSON if it's a string
+    if (typeof existingRoom === 'string') {
+      existingRoom = JSON.parse(existingRoom);
+    }
+    this.clients = existingRoom?.clients || {};
+    this.offer = existingRoom?.offer || null;
+    this.answer = existingRoom?.answer || null;
   }
 
-  reset() {
-    this.clients = {};
-    this.offer = null;
-    this.answer = null;
-    this.updatedAt = Date.now();
+  removeOldestClients(maxClients = 5) {
+    const clients = Object.entries(this.clients);
+    if (clients.length > maxClients) {
+      // Sort clients by joinedAt timestamp
+      clients.sort(([, a], [, b]) => a.joinedAt - b.joinedAt);
+      
+      // Remove oldest clients until we reach maxClients
+      const clientsToRemove = clients.slice(0, clients.length - maxClients);
+      for (const [clientId, client] of clientsToRemove) {
+        console.log(`Removing old client ${clientId} (${client.role})`);
+        this.removeClient(clientId);
+      }
+    }
   }
 
   addClient(clientId) {
+    // First check and remove old clients if needed
+    this.removeOldestClients(5);
+    
+    // First client is offerer, second is answerer
+    const isFirstClient = this.clients[Object.keys(this.clients)[Object.keys(this.clients).length - 1]]?.role !== "offerer";
+    const role = isFirstClient ? "offerer" : "answerer";
+    
     this.clients[clientId] = {
-      connectedAt: Date.now(),
-      updatedAt: Date.now(),
+      role: role,
+      joinedAt: Date.now()
     };
-    this.updatedAt = Date.now();
-    // Remove dead clients
-    this.removeDeadClients();
+
+    console.log(`Added client ${clientId} as ${role}, total clients: ${Object.keys(this.clients).length}`);
+    return role;
   }
 
-  heartbeatClient(clientId) {
-    this.clients[clientId].updatedAt = Date.now();
+  getClientRole(clientId) {
+    return this.clients[clientId]?.role;
   }
 
-  // Remove "dead" clients that haven't sent a message in 10 seconds
   removeDeadClients() {
-    Object.keys(this.clients).forEach((clientId) => {
-      const client = this.clients[clientId];
-      if (Date.now() - client.updatedAt > 10000) {
-        this.removeClient(clientId);
+    const now = Date.now();
+    Object.entries(this.clients).forEach(([clientId, client]) => {
+      if (now - client.updatedAt > 20000) {
+        console.log(`Removing dead client ${clientId}`);
+        delete this.clients[clientId];
       }
     });
   }
 
-  get numberOfClients() {
-    return Object.keys(this.clients).length;
-  }
-
   removeClient(clientId) {
+    const client = this.clients[clientId];
+    if (!client) return;
+    
+    // If offerer disconnects, clear offer and answer
+    if (client.role === "offerer") {
+      this.offer = null;
+      this.answer = null;
+    }
+    // If answerer disconnects, only clear answer
+    if (client.role === "answerer") {
+      this.answer = null;
+    }
+    
     delete this.clients[clientId];
-    delete this.offer;
-    delete this.answer;
-    this.updatedAt = Date.now();
+    console.log(`Removed client ${clientId}, remaining clients: ${Object.keys(this.clients).length}`);
   }
 
   addOffer(offer) {
-    this.offer = {
-      sdp: offer.sdp,
-      ice: offer.ice,
-    };
-    this.updatedAt = Date.now();
+    this.offer = offer;
+    this.answer = null;
   }
 
   addAnswer(answer) {
-    this.answer = {
-      sdp: answer.sdp,
-      ice: answer.ice,
-    };
-    this.updatedAt = Date.now();
+    this.answer = answer;
+  }
+
+  heartbeatClient(clientId) {
+    if (this.clients[clientId]) {
+      this.clients[clientId].updatedAt = Date.now();
+    }
   }
 
   toJSON() {
     return JSON.stringify({
       clients: this.clients,
       offer: this.offer,
-      answer: this.answer,
-      updatedAt: this.updatedAt,
+      answer: this.answer
     });
   }
 
   friendlyJSON() {
     return JSON.stringify({
-      clients: Object.keys(this.clients).length,
-      offer: !!this.offer,
-      answer: !!this.answer,
-      updatedAt: this.updatedAt,
+      numClients: Object.keys(this.clients).length,
+      hasOffer: !!this.offer,
+      hasAnswer: !!this.answer,
+      lastRole: this.clients[Object.keys(this.clients)[Object.keys(this.clients).length - 1]]?.role || null
     });
   }
 }
 
 async function handleWebSocket(request, env) {
   const [client, server] = Object.values(new WebSocketPair());
-  server.accept();
-
-  server.addEventListener("error", (evt) => {
-    console.error("WebSocket error", evt);
-  });
-  server.addEventListener("close", () => {
-    console.error("WebSocket closed");
-  });
-  server.addEventListener("message", (evt) => {
-    console.error("WebSocket message", evt.data);
-  });
-
-  // We'll treat CF-Connecting-IP as the "roomId"
-  const roomId = request.headers.get("CF-Connecting-IP");
-  if (!roomId) {
-    console.error("No IP address found");
-    server.send(JSON.stringify({ error: "No IP address found" }));
-    server.close(1011, "No IP address");
-    return new Response(null, { status: 400 });
-  } else {
-    console.log("New connection", roomId);
-  }
-
-  // Load or initialize room state
-  let room;
+  
   try {
-    const record = await env.PORTAL_KV.get(roomId, { type: "json" });
-    room = new Room(record);
-    console.log("Load", roomId, room.friendlyJSON());
-  } catch (err) {
-    console.error("KV read error:", err);
-    server.send(JSON.stringify({ error: "Failed to access room state" }));
-    server.close(1011, "Storage error");
-    return new Response(null, { status: 500 });
-  }
+    server.accept();
+    const roomId = request.headers.get("CF-Connecting-IP");
+    const clientId = crypto.randomUUID();
+    let lastRoomState = null;
 
-  // Random unique ID for this connection
-  const clientId = crypto.randomUUID();
-  room.addClient(clientId);
-
-  // Enforce maximum 2 clients per IP
-  if (room.numberOfClients > 2) {
-    console.log("Room is full, closing connection");
-    server.send(JSON.stringify({ error: "Room is full (max 2 clients)" }));
-    server.close(1000, "Room full");
-    return new Response(null, { status: 403 });
-  }
-
-  try {
+    // Get or create room
+    let room = new Room(await env.PORTAL_KV.get(roomId));
+    const role = room.addClient(clientId);
     await env.PORTAL_KV.put(roomId, room.toJSON());
-    console.log("Client added", roomId, room.friendlyJSON());
-  } catch (err) {
-    console.error("KV write error:", err);
-    server.send(JSON.stringify({ error: "Failed to update room state" }));
-    server.close(1011, "Storage error");
-    return new Response(null, { status: 500 });
-  }
 
-  const stopHeartbeat = startHeartbeat(env, clientId);
-  const stopPolling = startPollingKV(env, roomId, room, server);
+    // Send role assignment
+    server.send(JSON.stringify({ 
+      type: "role",
+      data: { role }
+    }));
 
-  listenForMessages(server, env, roomId);
-  listenForClose(server, env, roomId, clientId, stopHeartbeat, stopPolling);
-
-  return new Response(null, { status: 101, webSocket: client });
-}
-
-function listenForMessages(server, env, roomId) {
-  server.addEventListener("message", async (evt) => {
-    let msg;
-    try {
-      msg = JSON.parse(evt.data);
-    } catch (err) {
-      server.send(JSON.stringify({ error: "Invalid JSON" }));
-      return;
+    // If answerer, send existing offer
+    if (role === "answerer" && room.offer) {
+      server.send(JSON.stringify({ 
+        type: "offer",
+        data: room.offer
+      }));
     }
 
-    console.log("Message", roomId, msg.type);
-
-    if (!msg.data?.sdp || !Array.isArray(msg.data?.ice)) {
-      server.send(JSON.stringify({ error: "Missing or invalid sdp/ice" }));
-      return;
-    }
-
-    // Get fresh state to handle concurrency
-    let room;
-    try {
-      const record = await env.PORTAL_KV.get(roomId, { type: "json" });
-      room = new Room(record);
-    } catch (err) {
-      console.error("KV read error:", err);
-      server.send(JSON.stringify({ error: "Failed to check room state" }));
-      return;
-    }
-
-    // Validate state transitions
-    if (msg.type === "offer") {
-      if (room.offer) {
-        server.send(
-          JSON.stringify({
-            error: "Offer already exists. You must send an answer.",
-          })
-        );
-        return;
-      }
-    } else if (msg.type === "answer") {
-      if (!room.offer) {
-        server.send(
-          JSON.stringify({
-            error: "Cannot answer: no offer exists yet.",
-          })
-        );
-        return;
-      }
-      if (room.answer) {
-        server.send(
-          JSON.stringify({
-            error: "Answer already exists.",
-          })
-        );
-        return;
-      }
-    }
-
-    // Store the update
-    if (msg.type === "offer") {
-      room.addOffer(msg.data);
-    } else if (msg.type === "answer") {
-      room.addAnswer(msg.data);
-    }
-
-    try {
-      await env.PORTAL_KV.put(roomId, room.toJSON());
-      console.log("Message stored", roomId, room.friendlyJSON());
-      server.send(JSON.stringify({ ok: true, type: msg.type + "-stored" }));
-    } catch (err) {
-      console.error("KV write error:", err);
-      server.send(JSON.stringify({ error: "Failed to save " + msg.type }));
-    }
-  });
-}
-
-function listenForClose(server, env, roomId, clientId, stopHeartbeat, stopPolling) {
-  server.addEventListener("close", async () => {
-    stopPolling();
-    stopHeartbeat();
-
-    // Get final state
-    let room;
-    try {
-      const record = await env.PORTAL_KV.get(roomId, { type: "json" });
-      room = new Room(record);
-    } catch (err) {
-      console.error("KV read error during cleanup:", err);
-      return;
-    }
-
-    room.removeClient(clientId);
-
-    try {
-      if (room.numberOfClients === 0) {
-        // Last client disconnected, clean up the room
-        await env.PORTAL_KV.delete(roomId);
-        console.log("Closing room", roomId);
-      } else {
-        // Other client still connected
+    // Set up polling interval
+    const pollInterval = setInterval(async () => {
+      try {
+        const currentRoomState = await env.PORTAL_KV.get(roomId);
+        
+        // Only process if room state has changed
+        if (currentRoomState !== lastRoomState) {
+          const currentRoom = new Room(currentRoomState);
+          
+          // Send offer to answerer
+          if (role === "answerer" && currentRoom.offer && (!lastRoomState || !new Room(lastRoomState).offer)) {
+            server.send(JSON.stringify({
+              type: "offer",
+              data: currentRoom.offer
+            }));
+          }
+          
+          // Send answer to offerer
+          if (role === "offerer" && currentRoom.answer && (!lastRoomState || !new Room(lastRoomState).answer)) {
+            server.send(JSON.stringify({
+              type: "answer",
+              data: currentRoom.answer
+            }));
+          }
+          
+          lastRoomState = currentRoomState;
+        }
+        
+        // Update client heartbeat
+        room = new Room(currentRoomState);
+        room.heartbeatClient(clientId);
         await env.PORTAL_KV.put(roomId, room.toJSON());
-        console.log("Removed client", roomId, clientId, room.friendlyJSON());
+        
+      } catch (error) {
+        console.error("Polling error:", error);
       }
-    } catch (err) {
-      console.error("KV write error during cleanup:", err);
-    }
-  });
-}
+    }, 1000); // Poll every second
 
-/**
- * Polls the KV store every 2 seconds for updates.
- */
-function startPollingKV(env, roomId, room, server) {
-  let lastOffer = room.offer;
-  let lastAnswer = room.answer;
+    // Handle messages
+    server.addEventListener("message", async evt => {
+      const msg = JSON.parse(evt.data);
+      console.log(`Received: ${msg.type}`);
+      
+      // Get latest room state
+      room = new Room(await env.PORTAL_KV.get(roomId));
+      
+      if (msg.type === "offer" && role === "offerer") {
+        room.addOffer(msg.data);
+        await env.PORTAL_KV.put(roomId, room.toJSON());
+      }
+      
+      if (msg.type === "answer" && role === "answerer") {
+        room.addAnswer(msg.data);
+        await env.PORTAL_KV.put(roomId, room.toJSON());
+      }
+    });
 
-  const intervalId = setInterval(async () => {
-    let room;
-    try {
-      const record = await env.PORTAL_KV.get(roomId, { type: "json" });
-      room = new Room(record);
-    } catch (err) {
-      console.error("KV polling read error:", err);
-      return;
-    }
+    // Clean up on close
+    server.addEventListener("close", async () => {
+      clearInterval(pollInterval);
+      
+      // Get latest room state and remove client
+      room = new Room(await env.PORTAL_KV.get(roomId));
+      room.removeClient(clientId);
+      await env.PORTAL_KV.put(roomId, room.toJSON());
+    });
 
-    console.log("Polling KV", roomId, room.friendlyJSON());
+    // Add error handler
+    server.addEventListener("error", async () => {
+      clearInterval(pollInterval);
+      
+      // Get latest room state and remove client
+      room = new Room(await env.PORTAL_KV.get(roomId));
+      room.removeClient(clientId);
+      await env.PORTAL_KV.put(roomId, room.toJSON());
+    });
 
-    // Check for offer changes
-    const isOfferChanged = JSON.stringify(room.offer) !== JSON.stringify(lastOffer);
-    if (isOfferChanged && room.offer) {
-      lastOffer = room.offer;
-      server.send(JSON.stringify({ type: "offer", data: room.offer }));
-    }
+    return new Response(null, {
+      status: 101,
+      webSocket: client
+    });
 
-    // Check for answer changes
-    const isAnswerChanged = JSON.stringify(room.answer) !== JSON.stringify(lastAnswer);
-    if (isAnswerChanged && room.answer) {
-      lastAnswer = room.answer;
-      server.send(JSON.stringify({ type: "answer", data: room.answer }));
-    }
-  }, 2000);
-
-  return () => {
-    clearInterval(intervalId);
-  };
-}
-
-async function startHeartbeat(env, clientId) {
-  const intervalId = setInterval(async () => {
-    const record = await env.PORTAL_KV.get(clientId, { type: "json" });
-    const room = new Room(record);
-    room.heartbeatClient(clientId);
-
-    room.removeDeadClients();
-
-    await env.PORTAL_KV.put(clientId, room.toJSON());
-    console.log("Heartbeat", clientId, room.friendlyJSON());
-  }, 1000);
-
-  return () => {
-    clearInterval(intervalId);
-  };
+  } catch (err) {
+    console.error("WebSocket error:", err);
+    server.close(1011, err.message);
+    return new Response(err.message, { status: 500 });
+  }
 }

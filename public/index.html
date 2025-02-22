@@ -2,263 +2,68 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>WebRTC Portal</title>
-    <style>
-      body {
-        font-family: sans-serif;
-        margin: 2rem;
-        background: #000;
-        color: #fff;
-      }
-      .status-light {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        background: #333;
-        display: inline-block;
-        margin-right: 8px;
-      }
-      .status-light.active {
-        background: #0f0;
-        box-shadow: 0 0 10px #0f0;
-      }
-      video {
-        width: 100%;
-        max-width: 1200px;
-        background: #111;
-        margin-top: 1rem;
-      }
-      #localVideo {
-        display: none;
-      }
-      .status {
-        display: flex;
-        align-items: center;
-        margin: 1rem 0;
-      }
-      #log {
-        font-family: monospace;
-        color: #0f0;
-        background: rgba(0, 0, 0, 0.5);
-        padding: 1rem;
-        margin-top: 1rem;
-        height: 200px;
-        overflow-y: auto;
-      }
-    </style>
+    <link rel="stylesheet" href="styles.css" />
+    <script type="module" src="app.js"></script>
   </head>
   <body>
-    <div class="status">
-      <div id="localLight" class="status-light"></div>
-      <span>Local Camera</span>
+    <div class="video-container">
+      <video id="remoteVideo" autoplay playsinline></video>
+      <video id="localVideo" autoplay muted playsinline></video>
+      
+      <div class="status">
+        <span class="status-light" id="localLight"></span>
+        <span>Local</span>
+        <span class="status-light disconnected" id="remoteLight"></span>
+        <span>Remote</span>
+        <span id="videoStatus"></span>
+      </div>
     </div>
-    <div class="status">
-      <div id="remoteLight" class="status-light"></div>
-      <span>Remote Connection</span>
+
+    <div class="controls">
+      <button id="videoToggle" class="control-button">
+        <svg viewBox="0 0 24 24">
+          <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+        </svg>
+        <span class="on">Camera</span>
+      </button>
+      <button id="audioToggle" class="control-button">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+          <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+        </svg>
+        <span class="on">Mic</span>
+      </button>
+      <button id="ringButton" class="control-button">
+        <svg viewBox="0 0 24 24">
+          <path d="M20.1 7.7l-1 1c1.8 1.8 1.8 4.6 0 6.5l1 1c2.5-2.3 2.5-6.1 0-8.5zM18 9.8l-1 1c.5.7.5 1.6 0 2.3l1 1c1.2-1.2 1.2-3 0-4.3zM14 1h-4c-.6 0-1 .4-1 1v20c0 .6.4 1 1 1h4c.6 0 1-.4 1-1V2c0-.6-.4-1-1-1z"/>
+        </svg>
+      </button>
+      <button id="morseButton" class="control-button">
+        <svg viewBox="0 0 24 24">
+          <path d="M3.24 6.15C2.51 6.43 2 7.17 2 8v12c0 1.1.89 2 2 2h16c1.11 0 2-.9 2-2V8c0-1.11-.89-2-2-2H8.3l8.26-3.34L15.88 1 3.24 6.15zM7 20c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm13-8h-2v-2h-2v2h-2v2h2v2h2v-2h2v-2z"/>
+        </svg>
+      </button>
+
+      <div class="message-container">
+        <input 
+          type="text" 
+          id="messageInput" 
+          placeholder="Type a message..." 
+          autocomplete="off"
+          autocapitalize="off"
+          autocorrect="off"
+          spellcheck="false"
+        />
+        <button id="sendButton" aria-label="Send message">
+          <svg viewBox="0 0 24 24" width="16" height="16">
+            <path fill="currentColor" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+          </svg>
+        </button>
+      </div>
     </div>
 
-    <video id="localVideo" autoplay muted playsinline></video>
-    <video id="remoteVideo" autoplay playsinline></video>
-
-    <pre id="log"></pre>
-
-    <script>
-      const WS_URL = "wss://signal.portl.cam/ws";
-      let ws;
-      let pc;
-      let localStream;
-      let role = null;
-      let reconnectAttempt = 0;
-      const MAX_RECONNECT_DELAY = 5000;
-
-      const logEl = document.getElementById("log");
-      function log(msg) {
-        console.log(msg);
-        logEl.textContent += msg + "\n";
-        logEl.scrollTop = logEl.scrollHeight;
-      }
-
-      // Start automatically
-      startConnection();
-
-      async function startConnection() {
-        try {
-          log("Requesting local media...");
-          localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-          document.getElementById("localVideo").srcObject = localStream;
-          document.getElementById("localLight").classList.add("active");
-
-          await setupPeerConnection();
-          connectWebSocket();
-        } catch (err) {
-          log("Error: " + err);
-          console.error(err);
-        }
-      }
-
-      async function setupPeerConnection() {
-        if (pc) {
-          pc.close();
-        }
-
-        // Create RTCPeerConnection - no STUN/TURN needed for LAN connections
-        pc = new RTCPeerConnection();
-        localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
-
-        pc.ontrack = (evt) => {
-          log("Received remote track");
-          document.getElementById("remoteVideo").srcObject = evt.streams[0];
-          document.getElementById("remoteLight").classList.add("active");
-        };
-
-        pc.oniceconnectionstatechange = () => {
-          log("ICE Connection State: " + pc.iceConnectionState);
-          if (pc.iceConnectionState === "disconnected") {
-            document.getElementById("remoteLight").classList.remove("active");
-          }
-        };
-
-        // Gather ICE candidates
-        const iceCandidates = [];
-        pc.onicecandidate = (evt) => {
-          if (evt.candidate) {
-            iceCandidates.push(evt.candidate);
-          }
-        };
-
-        return new Promise(async (resolve) => {
-          // Create offer immediately
-          const offer = await pc.createOffer();
-          await pc.setLocalDescription(offer);
-
-          // Wait for ICE gathering - faster on LAN
-          await waitForIce(pc);
-
-          resolve({
-            sdp: pc.localDescription.sdp,
-            ice: iceCandidates,
-          });
-        });
-      }
-
-      function connectWebSocket() {
-        if (ws) {
-          ws.close();
-        }
-
-        ws = new WebSocket(WS_URL);
-
-        ws.addEventListener("open", async () => {
-          log("WebSocket connected");
-          reconnectAttempt = 0;
-
-          // Always try to be offerer first
-          if (!role) {
-            const offer = await setupPeerConnection();
-            role = "offerer";
-            log("Sending initial offer");
-            ws.send(JSON.stringify({ type: "offer", data: offer }));
-          }
-        });
-
-        ws.addEventListener("message", async (evt) => {
-          const msg = JSON.parse(evt.data);
-
-          if (msg.error) {
-            log("WS error: " + msg.error);
-            if (msg.error.includes("Offer already exists")) {
-              // Clear existing role and become answerer
-              role = "answerer";
-              log("Existing offer found - switching to answerer role");
-            }
-            return;
-          }
-
-          if (msg.info) {
-            log("WS info: " + msg.info);
-            if (msg.info.includes("Room data cleared")) {
-              // Other client disconnected - reset and try to be offerer
-              log("Other client disconnected - resetting connection");
-              role = null;
-              await setupPeerConnection();
-              role = "offerer";
-              const offer = await setupPeerConnection();
-              ws.send(JSON.stringify({ type: "offer", data: offer }));
-            }
-            return;
-          }
-
-          if (msg.type === "offer") {
-            if (!role || role === "answerer") {
-              log("Received offer - creating answer");
-              role = "answerer";
-
-              await pc.setRemoteDescription({ type: "offer", sdp: msg.data.sdp });
-              for (let c of msg.data.ice) {
-                await pc.addIceCandidate(c);
-              }
-
-              const answer = await pc.createAnswer();
-              await pc.setLocalDescription(answer);
-
-              const localIce = [];
-              pc.onicecandidate = (evt) => {
-                if (evt.candidate) localIce.push(evt.candidate);
-              };
-
-              await waitForIce(pc);
-
-              ws.send(
-                JSON.stringify({
-                  type: "answer",
-                  data: {
-                    sdp: pc.localDescription.sdp,
-                    ice: localIce,
-                  },
-                })
-              );
-              log("Answer sent");
-            }
-          } else if (msg.type === "answer" && role === "offerer") {
-            log("Received answer - setting remote description");
-            await pc.setRemoteDescription({ type: "answer", sdp: msg.data.sdp });
-            for (let c of msg.data.ice) {
-              await pc.addIceCandidate(c);
-            }
-            log("Remote description set");
-          }
-        });
-
-        ws.addEventListener("close", () => {
-          log("WebSocket closed. Reconnecting...");
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttempt), MAX_RECONNECT_DELAY);
-          reconnectAttempt++;
-          setTimeout(connectWebSocket, delay);
-        });
-
-        ws.addEventListener("error", (error) => {
-          log("WebSocket error: " + error.message);
-        });
-      }
-
-      function waitForIce(pc) {
-        return new Promise((resolve) => {
-          let done = false;
-          pc.onicegatheringstatechange = () => {
-            if (pc.iceGatheringState === "complete" && !done) {
-              done = true;
-              resolve();
-            }
-          };
-          // Shorter timeout for LAN-only ICE gathering
-          setTimeout(() => {
-            if (!done) {
-              done = true;
-              resolve();
-            }
-          }, 1000);
-        });
-      }
-    </script>
+    <div class="messages" id="messages"></div>
   </body>
 </html>
