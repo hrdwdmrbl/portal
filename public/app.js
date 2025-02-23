@@ -46,14 +46,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         fullscreenToggle.classList.add("active");
       } catch (err) {
         console.log(err)
-        log("Error attempting to enable fullscreen:", err.message);
       }
     } else {
       try {
         await document.exitFullscreen();
         fullscreenToggle.classList.remove("active");
       } catch (err) {
-        log("Error attempting to exit fullscreen:", err.message);
       }
     }
   }
