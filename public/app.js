@@ -5,7 +5,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   let localStream;
   let role = null;
   let reconnectAttempts = 0;
-  const MAX_RECONNECT_ATTEMPTS = 5;
   let isReconnecting = false;
   let videoCheckInterval;
   let dataChannel = null;
@@ -696,16 +695,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Only attempt reconnection if we're completely disconnected
         if (!pc || (pc.connectionState !== "connected" && !isReconnecting)) {
           handleDisconnect("WebSocket closed");
-
-          if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-            reconnectAttempts++;
-            const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000);
-            log(`Reconnecting in ${delay / 1000} seconds... (Attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
-            reconnectionTimeout = setTimeout(() => startConnection(true), delay);
-          } else {
-            log("Max reconnection attempts reached");
-            await cleanupConnection();
-          }
+          reconnectAttempts++;
+          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000);
+          log(`Reconnecting in ${delay / 1000} seconds...`);
+          reconnectionTimeout = setTimeout(() => startConnection(true), delay);
         } else {
           console.log("ignoring");
         }
@@ -751,11 +744,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     } catch (err) {
       isReconnecting = false;
       log("Connection error: " + err.message);
-      if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-        reconnectAttempts++;
-        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000);
-        reconnectionTimeout = setTimeout(() => startConnection(true), delay);
-      }
+      reconnectAttempts++;
+      const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000);
+      reconnectionTimeout = setTimeout(() => startConnection(true), delay);
       throw err;
     }
   }
