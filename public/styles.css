@@ -73,7 +73,6 @@ video {
   display: none;
 }
 
-
 #log {
   font-family: monospace;
   color: #0f0;
@@ -365,6 +364,7 @@ video {
   flex-wrap: wrap;
   z-index: 5; /* Lower z-index than local video */
   box-sizing: border-box; /* Include padding in width calculation */
+  opacity: 0.5;
 }
 
 .fullscreen-button {
@@ -430,7 +430,7 @@ video {
 
 /* Add hover trigger area */
 .video-container::before {
-  content: '';
+  content: "";
   position: fixed;
   top: 0;
   right: 0;

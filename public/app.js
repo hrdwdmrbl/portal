@@ -44,13 +44,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         await videoContainer.requestFullscreen();
         fullscreenToggle.classList.add("active");
       } catch (err) {
-        console.log(err)
+        console.log(err);
       }
     } else {
       try {
         await document.exitFullscreen();
         fullscreenToggle.classList.remove("active");
       } catch (err) {
+        console.log(err);
       }
     }
   }
@@ -64,10 +65,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Add click and touch handlers for fullscreen button
   fullscreenToggle.addEventListener("click", toggleFullscreen);
-  fullscreenToggle.addEventListener("touchstart", (e) => {
-    e.preventDefault();
-    toggleFullscreen();
-  }, { passive: false });
+  fullscreenToggle.addEventListener(
+    "touchstart",
+    (e) => {
+      e.preventDefault();
+      toggleFullscreen();
+    },
+    { passive: false }
+  );
 
   // Update the log function
   function log(msg, type = "system") {
@@ -168,6 +173,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Reset video status and stream
     document.getElementById("videoStatus").textContent = "Disconnected";
     document.getElementById("remoteVideo").srcObject = null;
+    // Unhide - Return to default state, whatever CSS is set
+    document.getElementById("status").style.display = "";
 
     // Reset morse state
     isPressed = false;
@@ -721,6 +728,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             remoteLight.classList.add("active");
             remoteLight.classList.remove("disconnected");
             document.getElementById("videoStatus").textContent = "";
+            document.getElementById("status").style.display = "none";
             // Hide local video on connection
             if (localVideoVisible) {
               toggleLocalVideoVisibility();
@@ -730,6 +738,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             break;
 
           case "disconnected":
+            // Unhide - Return to default state, whatever CSS is set
+            document.getElementById("status").style.display = "";
           case "failed":
             handleDisconnect(`Connection ${pc.connectionState}`);
             if (!isReconnecting) {
@@ -896,6 +906,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   function handleDisconnect(reason = "") {
     const remoteLight = document.getElementById("remoteLight");
     const videoStatus = document.getElementById("videoStatus");
+    // Unhide - Return to default state, whatever CSS is set
+    document.getElementById("status").style.display = "";
 
     remoteLight.classList.remove("active");
     remoteLight.classList.add("disconnected");
@@ -906,16 +918,18 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function toggleLocalVideoVisibility(e) {
     if (e) e.preventDefault();
-    
+
     const localVideo = document.getElementById("localVideo");
     const toggleButton = document.getElementById("toggleLocalVideo");
-    
+
     localVideoVisible = !localVideoVisible;
-    
+
     localVideo.classList.toggle("visible", localVideoVisible);
     toggleButton.classList.toggle("visible", localVideoVisible);
   }
 
   document.getElementById("toggleLocalVideo").addEventListener("click", toggleLocalVideoVisibility);
-  document.getElementById("toggleLocalVideo").addEventListener("touchstart", toggleLocalVideoVisibility, { passive: false });
+  document
+    .getElementById("toggleLocalVideo")
+    .addEventListener("touchstart", toggleLocalVideoVisibility, { passive: false });
 });

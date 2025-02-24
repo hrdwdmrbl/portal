@@ -22,7 +22,7 @@ async function handleReset(request, env) {
 class Room {
   constructor(existingRoom = {}) {
     // Parse the JSON if it's a string
-    if (typeof existingRoom === 'string') {
+    if (typeof existingRoom === "string") {
       existingRoom = JSON.parse(existingRoom);
     }
     this.clients = existingRoom?.clients || {};
@@ -35,7 +35,7 @@ class Room {
     if (clients.length > maxClients) {
       // Sort clients by joinedAt timestamp
       clients.sort(([, a], [, b]) => a.joinedAt - b.joinedAt);
-      
+
       // Remove oldest clients until we reach maxClients
       const clientsToRemove = clients.slice(0, clients.length - maxClients);
       for (const [clientId, client] of clientsToRemove) {
@@ -48,14 +48,15 @@ class Room {
   addClient(clientId) {
     // First check and remove old clients if needed
     this.removeOldestClients(5);
-    
+
     // First client is offerer, second is answerer
-    const isFirstClient = this.clients[Object.keys(this.clients)[Object.keys(this.clients).length - 1]]?.role !== "offerer";
+    const isFirstClient =
+      this.clients[Object.keys(this.clients)[Object.keys(this.clients).length - 1]]?.role !== "offerer";
     const role = isFirstClient ? "offerer" : "answerer";
-    
+
     this.clients[clientId] = {
       role: role,
-      joinedAt: Date.now()
+      joinedAt: Date.now(),
     };
 
     console.log(`Added client ${clientId} as ${role}, total clients: ${Object.keys(this.clients).length}`);
@@ -72,7 +73,7 @@ class Room {
     if (clients.length > 2) {
       // Sort clients by joinedAt timestamp
       clients.sort(([, a], [, b]) => a.joinedAt - b.joinedAt);
-      
+
       // Remove oldest clients until we reach maxClients
       const clientsToRemove = clients.slice(0, clients.length - 2);
       for (const [clientId, client] of clientsToRemove) {
@@ -85,7 +86,7 @@ class Room {
   removeClient(clientId) {
     const client = this.clients[clientId];
     if (!client) return;
-    
+
     // If offerer disconnects, clear offer and answer
     if (client.role === "offerer") {
       this.offer = null;
@@ -95,7 +96,7 @@ class Room {
     if (client.role === "answerer") {
       this.answer = null;
     }
-    
+
     delete this.clients[clientId];
     console.log(`Removed client ${clientId}, remaining clients: ${Object.keys(this.clients).length}`);
   }
@@ -113,7 +114,7 @@ class Room {
     return JSON.stringify({
       clients: this.clients,
       offer: this.offer,
-      answer: this.answer
+      answer: this.answer,
     });
   }
 
@@ -122,7 +123,7 @@ class Room {
       numClients: Object.keys(this.clients).length,
       hasOffer: !!this.offer,
       hasAnswer: !!this.answer,
-      lastRole: this.clients[Object.keys(this.clients)[Object.keys(this.clients).length - 1]]?.role || null
+      lastRole: this.clients[Object.keys(this.clients)[Object.keys(this.clients).length - 1]]?.role || null,
     });
   }
 }
@@ -154,9 +155,9 @@ async function handleWebSocket(request, env) {
   //     return env.PORTAL_KV.delete(key);
   //   }
   // });
-  
+
   const [client, server] = Object.values(new WebSocketPair());
-  
+
   try {
     server.accept();
     const roomId = request.headers.get("CF-Connecting-IP");
@@ -169,64 +170,72 @@ async function handleWebSocket(request, env) {
     await env.PORTAL_KV.put(roomId, room.toJSON());
 
     // Send role assignment
-    server.send(JSON.stringify({ 
-      type: "role",
-      data: { role }
-    }));
+    server.send(
+      JSON.stringify({
+        type: "role",
+        data: { role },
+      })
+    );
 
     // If answerer, send existing offer
     if (role === "answerer" && room.offer) {
-      server.send(JSON.stringify({ 
-        type: "offer",
-        data: room.offer
-      }));
+      server.send(
+        JSON.stringify({
+          type: "offer",
+          data: room.offer,
+        })
+      );
     }
 
     // Set up polling interval
     const pollInterval = setInterval(async () => {
       try {
         const currentRoomState = await env.PORTAL_KV.get(roomId);
-        
+
         // Only process if room state has changed
         if (currentRoomState !== lastRoomState) {
           const currentRoom = new Room(currentRoomState);
-          
+
           // Send offer to answerer
           if (role === "answerer" && currentRoom.offer && (!lastRoomState || !new Room(lastRoomState).offer)) {
-            server.send(JSON.stringify({
-              type: "offer",
-              data: currentRoom.offer
-            }));
+            server.send(
+              JSON.stringify({
+                type: "offer",
+                data: currentRoom.offer,
+              })
+            );
           }
-          
+
           // Send answer to offerer
           if (role === "offerer" && currentRoom.answer && (!lastRoomState || !new Room(lastRoomState).answer)) {
-            server.send(JSON.stringify({
-              type: "answer",
-              data: currentRoom.answer
-            }));
+            server.send(
+              JSON.stringify({
+                type: "answer",
+                data: currentRoom.answer,
+              })
+            );
           }
-          
+
           lastRoomState = currentRoomState;
-        }        
+        }
       } catch (error) {
         console.error("Polling error:", error);
       }
     }, 2000); // Poll every second
 
     // Handle messages
-    server.addEventListener("message", async evt => {
+    server.addEventListener("message", async (evt) => {
       const msg = JSON.parse(evt.data);
       console.log(`Received: ${msg.type}`);
-      
+
       // Get latest room state
       room = new Room(await env.PORTAL_KV.get(roomId));
-      
+
       if (msg.type === "offer" && role === "offerer") {
         room.addOffer(msg.data);
         await env.PORTAL_KV.put(roomId, room.toJSON());
       }
-      
+
       if (msg.type === "answer" && role === "answerer") {
         room.addAnswer(msg.data);
         await env.PORTAL_KV.put(roomId, room.toJSON());
@@ -236,7 +245,7 @@ async function handleWebSocket(request, env) {
     // Clean up on close
     server.addEventListener("close", async () => {
       clearInterval(pollInterval);
-      
+
       // Get latest room state and remove client
       room = new Room(await env.PORTAL_KV.get(roomId));
       room.removeClient(clientId);
@@ -246,7 +255,7 @@ async function handleWebSocket(request, env) {
     // Add error handler
     server.addEventListener("error", async () => {
       clearInterval(pollInterval);
-      
+
       // Get latest room state and remove client
       room = new Room(await env.PORTAL_KV.get(roomId));
       room.removeClient(clientId);
@@ -255,9 +264,8 @@ async function handleWebSocket(request, env) {
 
     return new Response(null, {
       status: 101,
-      webSocket: client
+      webSocket: client,
     });
-
   } catch (err) {
     console.error("WebSocket error:", err);
     server.close(1011, err.message);
