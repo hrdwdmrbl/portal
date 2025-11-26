@@ -35,52 +35,26 @@ export class Room {
     this.answer = state.answer || null;
   }
 
-  private removeOldestClients(maxClients: number = 2): void {
-    const clients = Object.entries(this.clients);
-    if (clients.length > maxClients) {
-      // Sort clients by joinedAt timestamp
-      clients.sort(([, a], [, b]) => a.joinedAt - b.joinedAt);
-
-      // Remove oldest clients until we reach maxClients
-      const clientsToRemove = clients.slice(0, clients.length - maxClients);
-      for (const [clientId, client] of clientsToRemove) {
-        console.log(`Removing old client ${clientId} (${client.role})`);
-        this.removeClient(clientId);
-      }
-    }
-  }
-
-  public addClient(clientId: string): "offerer" | "answerer" {
-    // First check and remove old clients if needed
-    this.removeOldestClients();
-
-    // Determine role: if the last added client is NOT an offerer, then this one is offerer?
-    // Logic from original:
-    // const isFirstClient = this.clients[Object.keys(this.clients)[Object.keys(this.clients).length - 1]]?.role !== "offerer";
-    // This logic seems a bit fragile.
-    // If no clients, last client is undefined. undefined?.role !== "offerer" is true. So first client is "offerer".
-    // If one client exists and is "offerer". last client is "offerer". !== "offerer" is false. So second is "answerer".
-    // If one client exists and is "answerer". last client is "answerer". !== "offerer" is true. So second is "offerer".
-
-    // Simplification: If there are no clients, or no 'offerer' in the list, be the offerer.
-    // Otherwise be the answerer.
+  public addClient(clientId: string): Client {
+    this.cleanupDisconnectedClients();
 
     const hasOfferer = Object.values(this.clients).some((c) => c.role === "offerer");
     const role: "offerer" | "answerer" = !hasOfferer ? "offerer" : "answerer";
 
-    this.clients[clientId] = new Client({
+    const client = new Client({
       clientId: clientId,
       role: role,
       joinedAt: Date.now(),
       lastSeen: Date.now(),
     });
+    this.clients[clientId] = client;
 
     console.log(`Added ${clientId} as ${role} to room ${this.roomId}. ${Object.keys(this.clients).length} clients`);
-    return role;
+    return client;
   }
 
-  public getClientRole(clientId: string): "offerer" | "answerer" | undefined {
-    return this.clients[clientId]?.role;
+  public getClient(clientId: string): Client {
+    return this.clients[clientId];
   }
 
   public removeClient(clientId: string): void {
@@ -101,21 +75,41 @@ export class Room {
     console.log(`Removed client ${clientId}, remaining clients: ${Object.keys(this.clients).length}`);
   }
 
-  public cleanupDisconnectedClients(activeClientIds: Set<string>): boolean {
-    let changed = false;
+  /**
+   * Clean up zombie clients that are in Room but not active
+   */
+  public cleanupDisconnectedClients(): void {
+    const activeClientIds = this.getActiveClientIds();
     const now = Date.now();
-
     for (const [clientId, client] of Object.entries(this.clients)) {
       if (!activeClientIds.has(clientId)) {
         // Grace period of 15 seconds to allow for KV consistency
-        if (now - client.joinedAt > 15000) {
+        if (now - client.lastSeen > 15000) {
           console.log(`Removing zombie client ${clientId} (missing presence)`);
           this.removeClient(clientId);
-          changed = true;
         }
       }
     }
-    return changed;
+  }
+
+  private getActiveClientIds(): Set<string> {
+    const now = Date.now();
+    const activeClientIds = new Set<string>();
+
+    for (const client of Object.values(this.clients)) {
+      // Check liveness based on metadata timestamp
+      // If lastSeen is older than 15 seconds, consider it dead even if key exists
+      const lastSeen = client.lastSeen;
+      if (now - lastSeen < 15000) {
+        activeClientIds.add(client.clientId);
+      }
+    }
+
+    return activeClientIds;
+  }
+
+  public updatePresence(clientId: string): void {
+    this.clients[clientId].lastSeen = Date.now();
   }
 
   public addOffer(offer: OfferOrAnswerData): void {
