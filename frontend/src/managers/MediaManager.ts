@@ -103,8 +103,6 @@ export class MediaManager {
         onStatusChange("No video available", "0");
       } else if (!videoTrack.enabled || videoTrack.readyState === "ended") {
         onStatusChange("Video paused", "0");
-      } else {
-        onStatusChange("", "1");
       }
     }, 1000);
   }
