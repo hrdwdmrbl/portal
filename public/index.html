@@ -8,7 +8,7 @@
     />
     <title>Portl</title>
     <link rel="stylesheet" href="styles.css" />
-    <script type="module" src="app.js"></script>
+    <script type="module" src="/frontend/src/index.ts"></script>
     <link rel="icon" type="image/png" href="/favicon.png" />
   </head>
   <body>
@@ -28,12 +28,26 @@
         <video id="localVideo" autoplay muted playsinline class="visible"></video>
 
         <div class="status" id="status">
-          <span class="status-light disconnected" id="localLight"></span>
-          <span>Local</span>
-          <span class="status-light disconnected" id="remoteLight"></span>
-          <span>Remote</span>
-          <span class="status-light disconnected" id="videoStatus"></span>
-          <span>Video</span>
+          <div class="status-item">
+            <span class="status-light disconnected" id="localLight"></span>
+            <span>Local media status</span>
+            <span class="status-detail" id="localStatus"></span>
+          </div>
+          <div class="status-item">
+            <span class="status-light disconnected" id="websocketLight"></span>
+            <span>Websocket connection status</span>
+            <span class="status-detail" id="websocketStatus"></span>
+          </div>
+          <div class="status-item">
+            <span class="status-light disconnected" id="peerConnectionLight"></span>
+            <span>Peer connection status</span>
+            <span class="status-detail" id="peerConnectionStatus"></span>
+          </div>
+          <div class="status-item">
+            <span class="status-light disconnected" id="videoLight"></span>
+            <span>Video status</span>
+            <span class="status-detail" id="videoStatus"></span>
+          </div>
         </div>
       </div>
 

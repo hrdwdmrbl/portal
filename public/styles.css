@@ -53,7 +53,7 @@ video {
   top: 1rem;
   left: 1rem;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 0.5rem;
   background: rgba(0, 0, 0, 0.8);
   padding: 0.5rem 1rem;
@@ -61,16 +61,26 @@ video {
   border: 1px solid #444;
   z-index: 2;
 }
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .status span {
   font-size: 14px;
 }
-#videoStatus {
-  margin-left: 1rem;
-  color: #999;
+
+.status-detail {
+  font-size: 12px !important;
+  color: #aaa;
+  font-style: italic;
 }
 
-#videoStatus:empty {
-  display: none;
+.status-light.connecting {
+  background: #ffcc00;
+  box-shadow: 0 0 10px #ffcc00;
 }
 
 #log {
