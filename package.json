@@ -1,0 +1,33 @@
+{
+  "name": "portl",
+  "version": "1.0.0",
+  "description": "Portal is an always-on WebRTC-based peer-to-peer video tool for intra-office communication. All communication is encrypted, decentralized and peer-to-peer, except for the initial signaling which must be done through a central server because of the limitations of WebRTC.",
+  "main": "worker/worker.ts",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "npm run build && vite preview",
+    "deploy": "npm run build && wrangler deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.15.2",
+    "@eslint/js": "^9.33.0",
+    "@types/dom-webcodecs": "^0.1.17",
+    "@types/w3c-image-capture": "^1.0.11",
+    "esbuild": "^0.27.0",
+    "eslint": "^9.33.0",
+    "tsx": "^4.20.6",
+    "typescript-eslint": "^8.39.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.2",
+    "wrangler": "^4.50.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hrdwdmrbl/portal.git"
+  },
+  "license": "MIT",
+  "type": "module",
+  "homepage": "https://github.com/hrdwdmrbl/portal#readme"
+}

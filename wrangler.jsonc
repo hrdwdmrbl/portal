@@ -1,0 +1,26 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "portlsignal",
+  "compatibility_date": "2025-01-06",
+  "main": "worker/index.ts",
+  "routes": [
+    {
+      "pattern": "portl.cam",
+      "custom_domain": true
+    }
+  ],
+  "assets": {
+    "directory": "./public/"
+  },
+  "observability": {
+    "logs": {
+      "enabled": true
+    }
+  },
+  "kv_namespaces": [
+    {
+      "binding": "PORTAL_KV",
+      "id": "dd32dbb082834438a2605347fac64675"
+    }
+  ]
+}
