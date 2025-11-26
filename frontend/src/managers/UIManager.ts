@@ -506,10 +506,18 @@ export class UIManager {
   }
 
   public addRemoteTrack(track: MediaStreamTrack): void {
-    if (!this.remoteVideo.srcObject) {
-      this.remoteVideo.srcObject = new MediaStream();
-    }
-    (this.remoteVideo.srcObject as MediaStream).addTrack(track);
+    this.remoteVideo.srcObject ||= new MediaStream();
+    const stream = this.remoteVideo.srcObject as MediaStream;
+
+    // Remove any existing tracks of the same kind to prevent "Video paused" issues
+    // where monitoring checks the old (ended) track instead of the new one
+    stream.getTracks().forEach((t) => {
+      if (t.kind === track.kind) {
+        stream.removeTrack(t);
+      }
+    });
+
+    stream.addTrack(track);
   }
 
   public getRemoteVideoElement(): HTMLVideoElement {
