@@ -188,8 +188,6 @@ export class RTCManager {
   private async handleOffer(data: OfferOrAnswerData): Promise<void> {
     if (!this.peerConnection) {
       throw new Error("Peer connection not created");
-    } else if (!this.peerConnection.localDescription) {
-      throw new Error("Local description not created");
     }
     this.uiManager.setPeerConnectionStatus(this.role, "answering");
 
@@ -199,6 +197,9 @@ export class RTCManager {
     }
 
     const answer = await this.peerConnection.createAnswer();
+    if (!answer.sdp) {
+      throw new Error("Answer SDP not created");
+    }
     await this.peerConnection.setLocalDescription(answer);
 
     const iceCandidates: RTCIceCandidate[] = [];
@@ -211,7 +212,7 @@ export class RTCManager {
     this.peerCoordinationManager.send({
       type: "answer",
       data: {
-        sdp: this.peerConnection.localDescription.sdp,
+        sdp: answer.sdp,
         ice: iceCandidates,
       },
     });
@@ -240,30 +241,30 @@ export class RTCManager {
 
     await this.waitForIceGathering();
 
-    this.sendOffer(iceCandidates);
+    this.sendOffer(offer, iceCandidates);
 
     // Resend offer logic
     const offerResendInterval = setInterval(async () => {
       if (this.peerConnection?.currentRemoteDescription === null) {
         this.uiManager.log("No answer received, resending offer...");
-        this.sendOffer(iceCandidates);
+        this.sendOffer(offer, iceCandidates);
       } else {
         clearInterval(offerResendInterval);
       }
     }, 5000);
   }
 
-  private sendOffer(iceCandidates: RTCIceCandidate[]): void {
+  private sendOffer(offer: RTCSessionDescriptionInit, iceCandidates: RTCIceCandidate[]): void {
     if (!this.peerConnection) {
       throw new Error("Peer connection not created");
-    } else if (!this.peerConnection.localDescription) {
-      throw new Error("Local description not created");
+    } else if (!offer.sdp) {
+      throw new Error("Offer SDP not created");
     }
 
     this.peerCoordinationManager.send({
       type: "offer",
       data: {
-        sdp: this.peerConnection.localDescription.sdp,
+        sdp: offer.sdp,
         ice: iceCandidates,
       },
     });
