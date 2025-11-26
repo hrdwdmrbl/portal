@@ -78,7 +78,7 @@ export class RTCManager {
     peerConnection.onconnectionstatechange = () => {
       const state = peerConnection.connectionState;
       this.uiManager.log(`Connection state: ${state}`);
-      // this.uiManager.setPeerConnectionStatus(state);
+      this.uiManager.setPeerConnectionState(state);
 
       if (state === "connected") {
         this.setConnecting(false);
@@ -177,7 +177,7 @@ export class RTCManager {
     if (!this.peerConnection) {
       throw new Error("Peer connection not created");
     }
-    this.uiManager.setPeerConnectionStatus(this.role, "listening");
+    this.uiManager.setPeerConnectionStep(this.role, "listening");
 
     this.peerConnection.ondatachannel = (event) => {
       this.dataChannelManager.setupChannel(event.channel);
@@ -189,7 +189,7 @@ export class RTCManager {
     if (!this.peerConnection) {
       throw new Error("Peer connection not created");
     }
-    this.uiManager.setPeerConnectionStatus(this.role, "answering");
+    this.uiManager.setPeerConnectionStep(this.role, "answering");
 
     await this.peerConnection.setRemoteDescription({ type: "offer", sdp: data.sdp });
     for (const candidate of data.ice) {
@@ -197,26 +197,16 @@ export class RTCManager {
     }
 
     const answer = await this.peerConnection.createAnswer();
-    if (!answer.sdp) {
-      throw new Error("Answer SDP not created");
-    }
-    await this.peerConnection.setLocalDescription(answer);
-
-    const iceCandidates: RTCIceCandidate[] = [];
-    this.peerConnection.onicecandidate = (evt) => {
-      if (evt.candidate) iceCandidates.push(evt.candidate);
-    };
-
-    await this.waitForIceGathering();
+    const iceCandidates = await this.setLocalDescription(answer);
 
     this.peerCoordinationManager.send({
       type: "answer",
       data: {
-        sdp: answer.sdp,
+        sdp: answer.sdp!,
         ice: iceCandidates,
       },
     });
-    this.uiManager.setPeerConnectionStatus(this.role, "answered");
+    this.uiManager.setPeerConnectionStep(this.role, "answered");
   }
 
   // We create a channel for the answerer
@@ -224,23 +214,13 @@ export class RTCManager {
     if (!this.peerConnection) {
       throw new Error("Peer connection not created");
     }
-    this.uiManager.setPeerConnectionStatus(this.role, "offering");
+    this.uiManager.setPeerConnectionStep(this.role, "offering");
 
     const channel = this.peerConnection.createDataChannel("messages");
     this.dataChannelManager.setupChannel(channel);
 
-    const offer: RTCSessionDescriptionInit = await this.peerConnection.createOffer();
-    await this.peerConnection.setLocalDescription(offer);
-
-    const iceCandidates: RTCIceCandidate[] = [];
-    this.peerConnection.onicecandidate = (event: RTCPeerConnectionIceEvent) => {
-      if (event.candidate) {
-        iceCandidates.push(event.candidate);
-      }
-    };
-
-    await this.waitForIceGathering();
-
+    const offer = await this.peerConnection.createOffer();
+    const iceCandidates = await this.setLocalDescription(offer);
     this.sendOffer(offer, iceCandidates);
 
     // Resend offer logic
@@ -257,18 +237,16 @@ export class RTCManager {
   private sendOffer(offer: RTCSessionDescriptionInit, iceCandidates: RTCIceCandidate[]): void {
     if (!this.peerConnection) {
       throw new Error("Peer connection not created");
-    } else if (!offer.sdp) {
-      throw new Error("Offer SDP not created");
     }
 
     this.peerCoordinationManager.send({
       type: "offer",
       data: {
-        sdp: offer.sdp,
+        sdp: offer.sdp!,
         ice: iceCandidates,
       },
     });
-    this.uiManager.setPeerConnectionStatus(this.role, "offered");
+    this.uiManager.setPeerConnectionStep(this.role, "offered");
   }
 
   private async handleAnswer(data: OfferOrAnswerData): Promise<void> {
@@ -280,20 +258,6 @@ export class RTCManager {
     for (const candidate of data.ice) {
       await this.peerConnection.addIceCandidate(candidate);
     }
-  }
-
-  private waitForIceGathering(): Promise<void> {
-    return new Promise((resolve) => {
-      if (!this.peerConnection || this.peerConnection.iceGatheringState === "complete") {
-        resolve();
-      } else {
-        this.peerConnection.onicegatheringstatechange = () => {
-          if (this.peerConnection?.iceGatheringState === "complete") {
-            resolve();
-          }
-        };
-      }
-    });
   }
 
   public async cleanup(full = true): Promise<void> {
@@ -329,5 +293,38 @@ export class RTCManager {
     if (!this.peerConnection || (this.peerConnection.connectionState !== "connected" && !this.isConnecting)) {
       this.reconnect();
     }
+  }
+
+  private async setLocalDescription(description: RTCSessionDescriptionInit): Promise<RTCIceCandidate[]> {
+    if (!this.peerConnection) {
+      throw new Error("Peer connection not created");
+    }
+
+    await this.peerConnection.setLocalDescription(description);
+
+    const iceCandidates: RTCIceCandidate[] = [];
+    this.peerConnection.onicecandidate = (event: RTCPeerConnectionIceEvent) => {
+      if (event.candidate) {
+        iceCandidates.push(event.candidate);
+      }
+    };
+
+    await this.waitForIceGathering();
+
+    return iceCandidates;
+  }
+
+  private waitForIceGathering(): Promise<void> {
+    return new Promise((resolve) => {
+      if (!this.peerConnection || this.peerConnection.iceGatheringState === "complete") {
+        resolve();
+      } else {
+        this.peerConnection.onicegatheringstatechange = () => {
+          if (this.peerConnection?.iceGatheringState === "complete") {
+            resolve();
+          }
+        };
+      }
+    });
   }
 }

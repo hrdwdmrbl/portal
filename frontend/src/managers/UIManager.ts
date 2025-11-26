@@ -352,7 +352,7 @@ export class UIManager {
     } else if (status === "active") {
       this.localStatus.textContent = "";
       this.localLight.classList.remove("active", "connecting", "disconnected");
-      this.localLight.classList.add(type);
+      this.localLight.classList.add("active");
     }
   }
 
@@ -416,7 +416,7 @@ export class UIManager {
     this.peerConnectionStatus.textContent = isReconnecting ? "Reconnecting..." : "";
   }
 
-  public _setPeerConnectionStatus(state: RTCPeerConnectionState): void {
+  public setPeerConnectionState(state: RTCPeerConnectionState): void {
     this.assertInitialized();
     this.stopPeerConnectionBlink();
 
@@ -446,7 +446,7 @@ export class UIManager {
     }
   }
 
-  public setPeerConnectionStatus(
+  public setPeerConnectionStep(
     role: Role,
     status?: "offered" | "answered" | "listening" | "offering" | "answering"
   ): void {
@@ -487,7 +487,7 @@ export class UIManager {
   }
 
   public updateLocalMediaState(videoEnabled: boolean, audioEnabled: boolean): void {
-    this.localVideo.style.opacity = videoEnabled ? "1" : "0";
+    // this.localVideo.style.opacity = videoEnabled ? "1" : "0";
 
     this.localLight.classList.remove("active", "disconnected", "connecting");
     this.localLight.classList.add("active");
@@ -496,13 +496,13 @@ export class UIManager {
       this.localStatus.textContent = "";
     } else if (!videoEnabled && !audioEnabled) {
       this.localStatus.textContent = "Media disabled";
-      this.localLight.classList.remove("active");
-      this.localLight.classList.add("disconnected");
     } else {
       this.localStatus.textContent = videoEnabled ? "Audio disabled" : "Video disabled";
-      this.localLight.classList.remove("active");
-      this.localLight.classList.add("connecting"); // Yellow for partial
     }
+
+    // Update button states
+    this.videoToggle.classList.toggle("off", !videoEnabled);
+    this.audioToggle.classList.toggle("off", !audioEnabled);
   }
 
   public addRemoteTrack(track: MediaStreamTrack): void {
