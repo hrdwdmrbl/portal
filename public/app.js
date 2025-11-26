@@ -306,10 +306,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           log(`Unhandled message type: ${data.type}`);
       }
     };
-
-    channel.onerror = (error) => {
-      log(`Data channel error: ${error.message}`);
-    };
   }
 
   // Update toggle functions to handle touch events
