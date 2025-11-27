@@ -546,3 +546,22 @@ video {
     right: 160px;
   }
 }
+
+.glowing {
+  background-color: #555 !important;
+  box-shadow: 0 0 15px #fff;
+  border-color: #fff;
+}
+
+@keyframes shake {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(15deg); }
+  50% { transform: rotate(0eg); }
+  75% { transform: rotate(-15deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.shaking {
+  animation: shake 0.5s ease-in-out infinite;
+  background-color: #555 !important;
+}

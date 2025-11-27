@@ -241,6 +241,21 @@ export class UIManager {
     }
   }
 
+  public triggerMorseVisual(active: boolean): void {
+    if (active) {
+      this.morseButton.classList.add("glowing");
+    } else {
+      this.morseButton.classList.remove("glowing");
+    }
+  }
+
+  public triggerRingVisual(): void {
+    this.ringButton.classList.add("shaking");
+    setTimeout(() => {
+      this.ringButton.classList.remove("shaking");
+    }, 500); // Shake for 500ms
+  }
+
   private handleMorseStart(): void {
     this.assertInitialized();
 

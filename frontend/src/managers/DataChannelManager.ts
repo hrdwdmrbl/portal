@@ -68,8 +68,12 @@ export class DataChannelManager {
         break;
       case "sound":
         this.soundManager.playSound(msg.data);
+        if (msg.data.includes("ring")) {
+          this.uiManager.triggerRingVisual();
+        }
         break;
       case "morse":
+        this.uiManager.triggerMorseVisual(!!msg.data);
         if (msg.data) {
           this.soundManager.startMorseBeep();
         } else {
