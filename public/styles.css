@@ -255,6 +255,7 @@ video {
   /* Reset relative positioning props */
   max-width: none;
   cursor: pointer; /* Ensure clickability */
+  overflow: visible; /* Allow secondary bubbles to overflow */
 }
 
 /* Small bubbles around the main bubble */
@@ -269,18 +270,26 @@ video {
   pointer-events: none; /* Let clicks pass through to main bubble */
 }
 
+/* Second largest bubble (half of main bubble), offset bottom right at 4:30 direction */
 .message.bubble::before {
-  width: 15%;
-  height: 15%;
-  top: 10%;
-  right: 15%;
+  width: 50%;
+  height: 50%;
+  bottom: -32%;
+  right: -32%;
+  top: auto;
+  left: auto;
+  background: rgba(135, 206, 250, 0.4);
 }
 
+/* Smallest bubble (quarter of main bubble), centered horizontally above second bubble */
 .message.bubble::after {
-  width: 10%;
-  height: 10%;
-  top: 25%;
-  right: 5%;
+  width: 25%;
+  height: 25%;
+  top: -10%;
+  right: -19.5%;
+  bottom: auto;
+  left: auto;
+  background: rgba(135, 206, 250, 0.4);
 }
 
 .message.closing {
