@@ -2,6 +2,7 @@ import { RTCManager } from "./RTCManager";
 import { DataChannelManager } from "./DataChannelManager";
 import { MediaManager } from "./MediaManager";
 import { SoundManager } from "./SoundManager";
+import { BubbleManager } from "./BubbleManager";
 import { Role } from "../types";
 
 export class UIManager {
@@ -11,6 +12,8 @@ export class UIManager {
   private messagesContainer: HTMLElement;
   private remoteVideo: HTMLVideoElement;
   private statusContainer: HTMLElement;
+
+  private bubbleManager: BubbleManager;
 
   // Chat
   private messageInput: HTMLInputElement;
@@ -55,6 +58,8 @@ export class UIManager {
     this.videoContainer = document.querySelector("body") as HTMLElement;
     this.messagesContainer = this.getElement("messages");
     this.statusContainer = this.getElement("status");
+
+    this.bubbleManager = new BubbleManager(this.messagesContainer);
 
     // Chat
     this.messageInput = this.getElement("messageInput") as HTMLInputElement;
@@ -327,40 +332,7 @@ export class UIManager {
   public addChatMessage(msg: string): void {
     this.assertInitialized();
 
-    const messageEl = document.createElement("div");
-    messageEl.className = "message";
-
-    const contentEl = document.createElement("div");
-    contentEl.className = "message-content";
-    contentEl.textContent = msg;
-
-    const timeEl = document.createElement("span");
-    timeEl.className = "message-time";
-    timeEl.textContent = new Date().toLocaleTimeString();
-
-    messageEl.appendChild(contentEl);
-    messageEl.appendChild(timeEl);
-
-    const dismiss = () => {
-      if (!messageEl.classList.contains("closing")) {
-        messageEl.classList.add("closing");
-        messageEl.addEventListener("animationend", (e) => {
-          if (e.animationName === "fadeOut") {
-            messageEl.remove();
-          }
-        });
-      }
-    };
-
-    messageEl.addEventListener("click", dismiss);
-    messageEl.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      dismiss();
-    });
-
-    this.messagesContainer.appendChild(messageEl);
-    messageEl.scrollIntoView({ behavior: "smooth" });
-
+    this.bubbleManager.addBubble(msg);
     this.soundManager.playMessage();
   }
 
@@ -463,7 +435,6 @@ export class UIManager {
       // Disconnected/Failed
       this.peerConnectionLight.classList.add("disconnected");
       this.peerConnectionStatus.textContent = state.charAt(0).toUpperCase() + state.slice(1);
-      this.statusContainer.classList.remove("hidden");
     }
   }
 
