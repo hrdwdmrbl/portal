@@ -34,16 +34,12 @@ export class Room {
   }
 
   public addClient(clientId: string): Client {
-    this.cleanupDisconnectedClients();
-
     const hasOfferer = Object.values(this.clients).some((c) => c.role === "offerer");
     const role: "offerer" | "answerer" = !hasOfferer ? "offerer" : "answerer";
 
     const client = new Client({
       clientId: clientId,
       role: role,
-      joinedAt: Date.now(),
-      lastSeen: Date.now(),
     });
     this.clients[clientId] = client;
     return client;
@@ -66,34 +62,6 @@ export class Room {
     }
 
     delete this.clients[clientId];
-  }
-
-  public cleanupDisconnectedClients(): void {
-    const activeClientIds = this.getActiveClientIds();
-    for (const [clientId] of Object.entries(this.clients)) {
-      if (!activeClientIds.has(clientId)) {
-        this.removeClient(clientId);
-      }
-    }
-  }
-
-  private getActiveClientIds(): Set<string> {
-    const now = Date.now();
-    const activeClientIds = new Set<string>();
-
-    for (const client of Object.values(this.clients)) {
-      const lastSeen = client.lastSeen;
-      if (lastSeen && now - lastSeen < 15000) {
-        activeClientIds.add(client.clientId);
-      }
-    }
-    return activeClientIds;
-  }
-
-  public updatePresence(clientId: string): void {
-    if (this.clients[clientId]) {
-      this.clients[clientId].lastSeen = Date.now();
-    }
   }
 
   public addOffer(offer: OfferOrAnswerData): void {

@@ -7,8 +7,6 @@ export interface Env {
 export interface ClientType {
   clientId: string;
   role: "offerer" | "answerer";
-  joinedAt: number;
-  lastSeen: number;
 }
 
 export interface RoomState {

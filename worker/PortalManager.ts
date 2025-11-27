@@ -30,22 +30,8 @@ export class PortalManager extends DurableObject {
       onClose: (clientId) => this.handlers.delete(clientId),
     });
 
-    const alarm = await this.ctx.storage.getAlarm();
-    if (!alarm) {
-      const alarmTime = Date.now() + 1000 * 15; // 15 seconds
-      await this.ctx.storage.setAlarm(alarmTime);
-    }
-
     await webSocketHandler.handleConnection();
     this.handlers.set(webSocketHandler.getClientId(), webSocketHandler);
-  }
-
-  async alarm(): Promise<void> {
-    Object.values(this.handlers).forEach(async (handler: WebSocketHandler) => {
-      handler.validatePresence();
-    });
-
-    this.saveState();
   }
 
   private broadcast(signalingMessage: SignalingMessage, excludeClientId: string) {

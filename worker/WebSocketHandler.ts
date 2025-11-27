@@ -97,18 +97,6 @@ export class WebSocketHandler {
     this.socket.send(JSON.stringify(msg));
   }
 
-  public updatePresence(): void {
-    this.room.updatePresence(this.client.clientId);
-  }
-
-  public validatePresence(): void {
-    if (this.socket.readyState === WebSocket.OPEN) {
-      this.updatePresence();
-    } else if (this.socket.readyState === WebSocket.CLOSED) {
-      this.room.removeClient(this.client.clientId);
-    }
-  }
-
   public getClientId(): string {
     return this.client.clientId;
   }
