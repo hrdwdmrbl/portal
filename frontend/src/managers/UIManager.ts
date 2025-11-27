@@ -403,7 +403,8 @@ export class UIManager {
   public setPeerConnecting(isConnecting: boolean, isReconnecting?: boolean): void {
     if (!isConnecting) {
       this.stopPeerConnectionBlink();
-      if (!this.peerConnectionLight.classList.contains("active")) {
+      if (isReconnecting || !this.peerConnectionLight.classList.contains("active")) {
+        this.peerConnectionLight.classList.remove("active");
         this.peerConnectionLight.classList.add("disconnected");
       }
       this.peerConnectionStatus.textContent = isReconnecting ? "Reconnecting..." : "";
@@ -441,7 +442,7 @@ export class UIManager {
       this.peerConnectionStatus.textContent = state.charAt(0).toUpperCase() + state.slice(1);
       // Also ensure video status reflects disconnection if not already set
       if (!this.remoteVideoStatus.textContent) {
-        this.setRemoteVideoStatus("Disconnected");
+        this.setRemoteVideoStatus("disconnected");
       }
     }
   }
@@ -461,20 +462,20 @@ export class UIManager {
     }
   }
 
-  public setRemoteVideoStatus(status: string): void {
+  public setRemoteVideoStatus(status: "connected" | "disconnected" | "reconnecting"): void {
     this.remoteVideoStatus.textContent = status;
 
     this.remoteVideoLight.classList.remove("active", "disconnected", "connecting");
-    if (!status) {
+    if (status === "connected") {
       this.remoteVideoLight.classList.add("active");
-    } else if (status.toLowerCase().includes("paused")) {
+    } else if (status === "reconnecting") {
       this.remoteVideoLight.classList.add("connecting"); // Use yellow for paused/warning
     } else {
       this.remoteVideoLight.classList.add("disconnected");
     }
   }
 
-  public setRemoteVideoOpacity(opacity: string): void {
+  public setRemoteVideoOpacity(opacity: "0" | "1"): void {
     this.remoteVideo.style.opacity = opacity;
   }
 
