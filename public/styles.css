@@ -565,3 +565,7 @@ video {
   animation: shake 0.5s ease-in-out infinite;
   background-color: #555 !important;
 }
+
+.hidden {
+  display: none !important;
+}

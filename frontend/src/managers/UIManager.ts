@@ -445,6 +445,7 @@ export class UIManager {
     if (state === "connected") {
       this.peerConnectionLight.classList.add("active");
       this.peerConnectionStatus.textContent = "";
+      this.statusContainer.classList.add("hidden");
 
       // Hide local video on connection if it was visible
       if (this.localVideo.classList.contains("visible")) {
@@ -455,10 +456,12 @@ export class UIManager {
     } else if (state === "connecting" || state === "new") {
       this.peerConnectionLight.classList.add("connecting");
       this.peerConnectionStatus.textContent = "Connecting...";
+      this.statusContainer.classList.remove("hidden");
     } else if (state === "disconnected" || state === "failed") {
       // Disconnected/Failed
       this.peerConnectionLight.classList.add("disconnected");
       this.peerConnectionStatus.textContent = state.charAt(0).toUpperCase() + state.slice(1);
+      this.statusContainer.classList.remove("hidden");
     }
   }
 
