@@ -7,7 +7,7 @@
     "noImplicitAny": true,
     "strictNullChecks": true,
     "moduleResolution": "node",
-    "outDir": "./public",
+    "outDir": "./dist",
     "sourceMap": true,
     "skipLibCheck": true
   },
