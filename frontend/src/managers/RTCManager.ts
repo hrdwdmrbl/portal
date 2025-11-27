@@ -26,7 +26,9 @@ export class RTCManager {
 
     this.reconnectAttempts++;
     this.uiManager.log("Attempting to reconnect...");
-    await this.cleanup(false);
+    this.uiManager.setPeerConnecting(false, true);
+
+    await this.cleanup();
     const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 10000);
     await new Promise((resolve) => {
       this.reconnectionTimeout = setTimeout(resolve, delay);
@@ -81,9 +83,7 @@ export class RTCManager {
       this.uiManager.setPeerConnectionState(state);
 
       if (state === "connected") {
-        this.setConnecting(false);
-        this.reconnectAttempts = 0;
-        this.peerCoordinationManager.close(); // Close WS on successful P2P
+        this.handleConnectionSuccess();
       } else if (state === "failed" || state === "disconnected") {
         this.reconnect();
       }
@@ -92,8 +92,9 @@ export class RTCManager {
     peerConnection.onicecandidate = (event: RTCPeerConnectionIceEvent) => {
       this.uiManager.log(`ICE candidate: ${event.candidate?.candidate}`);
     };
-    peerConnection.oniceconnectionstatechange = (event: Event) => {
-      this.uiManager.log(`ICE connection state: ${event}`);
+    peerConnection.oniceconnectionstatechange = () => {
+      const iceState = peerConnection.iceConnectionState;
+      this.uiManager.log(`ICE connection state: ${iceState}`);
     };
     peerConnection.onicegatheringstatechange = (event: Event) => {
       this.uiManager.log(`ICE gathering state: ${event}`);
@@ -126,13 +127,22 @@ export class RTCManager {
     this.uiManager.setPeerConnecting(isConnecting, isReconnect);
   }
 
+  private handleConnectionSuccess(): void {
+    this.setConnecting(false);
+    this.reconnectAttempts = 0;
+    this.peerCoordinationManager.close();
+  }
+
   private setupRemoteTrackMonitoring(track: MediaStreamTrack): void {
     if (track.kind === "video") {
       const remoteVideo = this.uiManager.getRemoteVideoElement();
-      this.mediaManager.startVideoMonitoring(remoteVideo, (status, opacity) => {
-        this.uiManager.setRemoteVideoStatus(status);
-        this.uiManager.setRemoteVideoOpacity(opacity);
-      });
+      this.mediaManager.startVideoMonitoring(
+        remoteVideo,
+        (status: "connected" | "disconnected" | "reconnecting", opacity: "0" | "1") => {
+          this.uiManager.setRemoteVideoStatus(status);
+          this.uiManager.setRemoteVideoOpacity(opacity);
+        }
+      );
 
       track.onended = () => {
         this.uiManager.log(`Remote ${track.kind} track ended`);
@@ -260,12 +270,8 @@ export class RTCManager {
     }
   }
 
-  public async cleanup(full = true): Promise<void> {
+  public async cleanup(): Promise<void> {
     if (this.reconnectionTimeout) clearTimeout(this.reconnectionTimeout);
-
-    if (full) {
-      this.peerCoordinationManager.close();
-    }
 
     if (this.peerConnection) {
       this.tearDownPeerConnection(this.peerConnection);

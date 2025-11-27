@@ -63,6 +63,7 @@ export class PeerCoordinationManager {
       this.ws.onclose = null; // Prevent reconnection logic from triggering here if called manually
       this.ws.close();
       this.ws = null;
+      this.uiManager.setWebsocketStatus("closed");
     }
   }
 }

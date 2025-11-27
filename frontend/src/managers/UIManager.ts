@@ -39,6 +39,8 @@ export class UIManager {
   private remoteVideoLight: HTMLElement;
   private remoteVideoStatus: HTMLElement;
 
+  private dataChannelLight: HTMLElement;
+
   // Managers
   private rtcManager!: RTCManager;
   private dataChannelManager!: DataChannelManager;
@@ -76,6 +78,8 @@ export class UIManager {
 
     this.remoteVideoLight = this.getElement("videoLight");
     this.remoteVideoStatus = this.getElement("videoStatus");
+
+    this.dataChannelLight = this.getElement("dataChannelLight");
 
     this.setupEventListeners();
   }
@@ -374,14 +378,14 @@ export class UIManager {
   }
 
   public setDataChannelState(state: "open" | "closed" | "error"): void {
-    this.websocketLight.classList.remove("active", "disconnected", "connecting");
+    this.dataChannelLight.classList.remove("active", "disconnected", "connecting");
 
     if (state === "open") {
-      this.websocketLight.classList.add("active");
+      this.dataChannelLight.classList.add("active");
     } else if (state === "closed") {
-      this.websocketLight.classList.add("disconnected");
+      this.dataChannelLight.classList.add("disconnected");
     } else if (state === "error") {
-      this.websocketLight.classList.add("error");
+      this.dataChannelLight.classList.add("error");
     } else {
       throw new Error(`Invalid data channel state: ${state}`);
     }

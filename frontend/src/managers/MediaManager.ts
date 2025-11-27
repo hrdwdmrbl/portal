@@ -89,7 +89,7 @@ export class MediaManager {
 
   public startVideoMonitoring(
     remoteVideo: HTMLVideoElement,
-    onStatusChange: (status: "connected" | "disconnected", opacity: "0" | "1") => void
+    onStatusChange: (status: "connected" | "disconnected" | "reconnecting", opacity: "0" | "1") => void
   ): void {
     this.stopVideoMonitoring();
 
