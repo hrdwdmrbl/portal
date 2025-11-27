@@ -1,378 +1,530 @@
+:root {
+  --surface: #eceef0;
+  --shadow-light: #ffffff;
+  --shadow-dark: #a3b1c6;
+  --text-main: #4a4a4a;
+  --accent: #ff7f50;
+
+  --shadow-convex: -6px -6px 12px var(--shadow-light), 6px 6px 12px var(--shadow-dark);
+  --shadow-concave: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+  --shadow-floating: 10px 10px 20px var(--shadow-dark), -10px -10px 20px var(--shadow-light);
+
+  --font-main: "Inter", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body {
-  font-family: sans-serif;
+  font-family: var(--font-main);
   margin: 0;
   padding: 0;
+  background: #000; /* Video background */
+  color: var(--text-main);
+  overflow: hidden;
+  font-size: 14px;
+  letter-spacing: 0.05em; /* Wide tracking */
+}
+
+/* Typography Reset */
+button,
+input,
+textarea,
+select {
+  font-family: var(--font-main);
+  color: var(--text-main);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+/* Video Layout - Preserved but cleaned up */
+.video-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1;
   background: #000;
-  color: #fff;
-  overflow: hidden; /* Prevent body scrolling */
+  overflow: hidden;
 }
-.status-light {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #333;
-  display: inline-block;
-  margin-right: 8px;
-}
-.status-light.active {
-  background: #0f0;
-  box-shadow: 0 0 10px #0f0;
-}
-.status-light.disconnected {
-  background: #ff4444;
-  box-shadow: 0 0 10px #ff4444;
-}
-#remoteLight {
-  margin-left: 1rem;
-}
+
 video {
   width: 100%;
-  background: #111;
-}
-
-#localVideo {
-  position: absolute;
-  bottom: 2rem;
-  right: -245px;
-  width: 240px;
-  height: 135px;
+  height: 100%;
   object-fit: cover;
-  border: 2px solid #444;
-  border-radius: 4px 0 0 4px;
   display: block;
-  z-index: 10;
-  transition: right 0.3s ease;
-}
-
-#localVideo.visible {
-  right: 0;
-}
-
-.status {
-  position: absolute;
-  top: 1rem;
-  left: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  background: rgba(0, 0, 0, 0.8);
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  border: 1px solid #444;
-  z-index: 2;
-}
-
-.status-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.status span {
-  font-size: 14px;
-}
-
-.status-detail {
-  font-size: 12px !important;
-  color: #aaa;
-  font-style: italic;
-}
-
-.status-light.connecting {
-  background: #ffcc00;
-  box-shadow: 0 0 10px #ffcc00;
-}
-
-#log {
-  font-family: monospace;
-  color: #0f0;
-  background: rgba(0, 0, 0, 0.5);
-  padding: 1rem;
-  margin-top: 1rem;
-  height: 200px;
-  overflow-y: auto;
-}
-.message-container {
-  flex: 1; /* Take remaining space */
-  min-width: 200px; /* Minimum width for input */
-  max-width: 400px; /* Maximum width for input */
-  margin-left: 0.5rem;
-  display: flex;
-  gap: 0.5rem;
-}
-
-.message-container input {
-  flex: 1; /* Take remaining space in container */
-  min-width: 100px; /* Allow input to shrink */
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid #444;
-  color: #fff;
-  padding: 0.5rem;
-  border-radius: 4px;
-}
-
-.message-container input:focus {
-  outline: none;
-  border-color: #666;
-}
-
-.message-container button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.5rem;
-  background: #333;
-  border: 1px solid #444;
-  color: #fff;
-  cursor: pointer;
-  border-radius: 4px;
-}
-
-.message-container button:hover {
-  background: #444;
-}
-
-.control-button {
-  margin-left: 10px;
-  padding: 0.5rem 1rem;
-  background: #333;
-  border: 1px solid #444;
-  color: #fff;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.control-button:hover {
-  background: #444;
-}
-
-.control-button.disabled {
-  background: #555;
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-.control-button.disabled:hover {
-  background: #666;
-}
-
-.control-button.off {
-  background: #d32f2f;
-}
-
-.control-button.off:hover {
-  background: #b71c1c;
-}
-
-.control-button svg {
-  width: 16px;
-  height: 16px;
-  fill: currentColor;
-}
-
-.control-button.disabled .on,
-.control-button:not(.disabled) .off {
-  display: none;
 }
 
 #remoteVideo {
   width: 100%;
   height: 100%;
+}
+
+#localVideo {
+  position: absolute;
+  bottom: 140px; /* Above controls */
+  right: -240px; /* Hidden by default (Width 240px) */
+  width: 240px;
+  height: 135px;
   object-fit: cover;
-  transition: opacity 0.3s ease;
+  border-radius: 12px;
+  z-index: 10;
+  border: 4px solid var(--surface);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  transition: right 0.3s ease;
 }
 
-.video-container {
-  position: fixed; /* Change from relative to fixed */
-  width: 100vw;
-  height: 100vh;
-  margin: 0;
+#localVideo.visible {
+  right: 20px;
+}
+
+#localVideo.hidden {
+  /* Keep opacity transition for other logic if needed, but primary hiding is via position */
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Neumorphic Panel Mixin */
+.neumorphic-panel {
+  background: var(--surface);
+  border-radius: 20px;
+  box-shadow: var(--shadow-convex);
+  padding: 20px;
+  position: relative;
+}
+
+/* Screw Decorations */
+.screw {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #d1d4d9, #f0f2f5);
+  box-shadow: inset 1px 1px 2px rgba(255, 255, 255, 0.8), inset -1px -1px 2px rgba(0, 0, 0, 0.2),
+    1px 1px 2px rgba(0, 0, 0, 0.3);
+  z-index: 2;
+}
+
+.screw::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(45deg);
+  width: 6px;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.screw::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-45deg);
+  width: 6px;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.screw.tl {
+  top: 8px;
+  left: 8px;
+}
+.screw.tr {
+  top: 8px;
+  right: 8px;
+}
+.screw.bl {
+  bottom: 8px;
+  left: 8px;
+}
+.screw.br {
+  bottom: 8px;
+  right: 8px;
+}
+
+/* Status Panel */
+.status {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: var(--shadow-convex);
+  padding: 16px;
+  min-width: 200px;
+}
+
+.status.hidden {
+  display: none;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-main);
+}
+
+.status-light {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: var(--shadow-concave); /* Off state is pressed in */
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.status-light::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: transparent;
+  transition: all 0.3s ease;
+}
+
+.status-light.active {
+  box-shadow: var(--shadow-convex); /* Active pops out or glows */
+}
+
+.status-light.active::after {
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+
+.status-light.disconnected::after {
+  background: #ff4444;
+  box-shadow: 0 0 8px #ff4444;
+}
+
+.status-light.connecting::after {
+  background: #ffcc00;
+  box-shadow: 0 0 8px #ffcc00;
+}
+
+.status-detail {
+  font-size: 0.6rem !important;
+  opacity: 0.7;
+  text-transform: none;
+}
+
+/* Control Dock */
+.controls {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 24px 32px;
+
+  background: var(--surface);
+  border-radius: 24px;
+  box-shadow: -10px -10px 20px rgba(255, 255, 255, 0.9), 10px 10px 20px rgba(163, 177, 198, 0.6); /* Custom heavy floating shadow */
+
+  width: auto;
+  max-width: 90vw;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Control Buttons */
+.control-button {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%; /* Circle shape */
+  border: none;
+  background: var(--surface);
+  box-shadow: var(--shadow-convex);
+  color: var(--text-main);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
   padding: 0;
-  background: #000;
-  overflow: hidden; /* Prevent container scrolling */
+  margin: 0;
+  outline: none;
 }
 
-#ringButton {
-  background: #333;
-  margin-left: 0.5rem;
+.control-button:hover {
+  transform: translateY(-2px);
+  box-shadow: -8px -8px 16px var(--shadow-light), 8px 8px 16px var(--shadow-dark);
 }
 
-#ringButton:active {
-  background: #555;
+.control-button:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-concave);
 }
 
-#morseButton {
-  background: #333;
-  margin-left: 0.5rem;
-  user-select: none;
-  -webkit-user-select: none;
+.control-button.off {
+  color: var(--text-main);
+  opacity: 0.7;
 }
 
-#morseButton:active {
-  background: #555;
+.control-button.off:active {
+  box-shadow: var(--shadow-concave);
+}
+
+.control-button svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+  filter: drop-shadow(1px 1px 1px rgba(255, 255, 255, 0.8));
+}
+
+.control-button span.on,
+.control-button span.off {
+  display: none; /* Hide text labels, use icons only */
+}
+
+/* Active state for toggles (convex with color) */
+.control-button:not(.off) svg {
+  color: var(--accent);
+  filter: drop-shadow(0 0 5px rgba(255, 127, 80, 0.5));
+}
+
+/* Special buttons */
+#ringButton.shaking {
+  animation: shake 0.5s ease-in-out;
+  color: var(--accent);
+  box-shadow: var(--shadow-concave);
+}
+
+#morseButton.glowing {
+  color: var(--accent);
+  box-shadow: 0 0 15px var(--accent), var(--shadow-convex);
 }
 
 #morseButton.pressed {
-  background: #555;
+  box-shadow: var(--shadow-concave);
+  color: var(--accent);
+}
+
+/* Message Input Area */
+.message-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--surface);
+  border-radius: 50px; /* Pill shape */
+  box-shadow: var(--shadow-concave);
+  margin-left: 12px;
+}
+
+#messageInput {
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 8px;
+  width: 200px;
+  color: var(--text-main);
+  font-size: 0.8rem;
+}
+
+#messageInput::placeholder {
+  color: var(--text-main);
+  opacity: 0.5;
+}
+
+#sendButton {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: var(--surface);
+  box-shadow: var(--shadow-convex);
+  color: var(--accent);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+#sendButton:active {
+  box-shadow: var(--shadow-concave);
+}
+
+/* Floating Messages */
+.messages {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 15;
 }
 
 .message {
-  position: relative;
-  padding: 1.5rem;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(8px);
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  min-width: 250px;
-  min-height: 100px;
-  max-width: 400px;
-  transform-origin: center;
   pointer-events: auto;
-  animation: messageAppear 0.3s ease-out;
   cursor: pointer;
+}
+
+.message.bubble {
+  position: fixed;
+  background: var(--surface);
+  color: var(--text-main);
+  border-radius: 50%;
+  /* Using convex shadow for floating bubbles */
+  box-shadow: var(--shadow-convex);
+  aspect-ratio: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.message.bubble {
-  position: fixed; /* Managed by BubbleManager */
-  /* Blueish transparent background like bubble emoji */
-  background: rgba(135, 206, 250, 0.3);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  /* Sheen effect */
-  box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.5), 0 0 10px rgba(135, 206, 250, 0.3);
-  border-radius: 50%;
-  aspect-ratio: 1;
-  min-width: auto;
-  min-height: auto;
-  gap: 0.5rem;
-  /* Reset relative positioning props */
-  max-width: none;
-  cursor: pointer; /* Ensure clickability */
-  overflow: visible; /* Allow secondary bubbles to overflow */
-}
-
-/* Small bubbles around the main bubble */
 .message.bubble::before,
 .message.bubble::after {
   content: "";
   position: absolute;
-  background: rgba(135, 206, 250, 0.4);
+  background: var(--surface);
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: inset 0 0 5px rgba(255, 255, 255, 0.4);
-  pointer-events: none; /* Let clicks pass through to main bubble */
+  box-shadow: var(--shadow-convex);
+  pointer-events: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-/* Second largest bubble (half of main bubble), offset bottom right at 4:30 direction */
 .message.bubble::before {
   width: 50%;
   height: 50%;
-  bottom: -32%;
-  right: -32%;
-  top: auto;
-  left: auto;
-  background: rgba(135, 206, 250, 0.4);
+  bottom: -30%;
+  right: -20%;
 }
 
-/* Smallest bubble (quarter of main bubble), centered horizontally above second bubble */
 .message.bubble::after {
   width: 25%;
   height: 25%;
-  top: -10%;
-  right: -19.5%;
-  bottom: auto;
-  left: auto;
-  background: rgba(135, 206, 250, 0.4);
-}
-
-.message.closing {
-  animation: fadeOut 0.5s ease-out forwards;
-  pointer-events: none; /* Prevent additional clicks during animation */
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideOut {
-  from {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-}
-
-.message-time {
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.5);
-  text-align: center;
-  width: 100%;
-  padding-top: 0.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  top: -15%;
+  right: 10%;
 }
 
 .message-content {
-  color: rgba(255, 255, 255, 0.95);
-  font-size: 1.1rem;
+  color: var(--text-main);
+  font-weight: 600;
+  font-size: 0.9rem;
   text-align: center;
-  margin: 0;
-  flex-grow: 1;
+}
+
+.message-time {
+  font-size: 0.65rem;
+  color: var(--text-main);
+  opacity: 0.6;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  margin-top: 4px;
+  padding-top: 4px;
+}
+
+/* Fullscreen Toggle */
+.fullscreen-button {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-convex);
+  border: none;
+  color: var(--text-main);
+  cursor: pointer;
+  z-index: 20;
   display: flex;
   align-items: center;
   justify-content: center;
+  opacity: 0.6;
+  transition: all 0.3s ease;
 }
 
-.message-close {
-  display: none;
+.fullscreen-button:hover {
+  opacity: 1;
+  transform: translateY(-2px);
 }
 
-.message.received {
-  background: rgba(5, 9, 14, 0.692);
-  backdrop-filter: blur(8px);
-  border: 2px solid rgba(0, 0, 0, 0.564);
+.fullscreen-button:active {
+  box-shadow: var(--shadow-concave);
+  transform: translateY(0);
 }
 
-.message.sent {
-  border: 1px solid #444;
+/* Toggle Local Video Button */
+#toggleLocalVideo {
+  position: absolute;
+  bottom: 140px; /* Match local video */
+  right: 0;
+  width: 30px;
+  height: 60px; /* Small pull tab */
+  background: var(--surface);
+  border-radius: 10px 0 0 10px;
+  box-shadow: -4px 4px 8px rgba(0, 0, 0, 0.2);
+  border: none;
+  color: var(--text-main);
+  cursor: pointer;
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: right 0.3s ease;
 }
 
-.message.error {
-  background: rgba(255, 0, 0, 0.15);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 0, 0, 0.2);
+#toggleLocalVideo.visible {
+  right: 260px; /* 240 + 20 margin */
 }
 
-.message.self {
-  background: rgba(0, 255, 0, 0.15);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(0, 255, 0, 0.2);
-  animation: fadeOut 0.5s ease-in forwards;
-  animation-delay: 3s;
+#toggleLocalVideo svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+  transform: rotate(180deg); /* Point left by default */
+  transition: transform 0.3s ease;
 }
 
-/* Update animations to handle border colors */
-@keyframes fadeOut {
-  from {
-    opacity: 1;
-    transform: scale(1);
+#toggleLocalVideo.visible svg {
+  transform: rotate(0deg); /* Point right when visible */
+}
+
+/* Animations */
+@keyframes shake {
+  0%,
+  100% {
+    transform: rotate(0deg);
   }
+  25% {
+    transform: rotate(15deg);
+  }
+  75% {
+    transform: rotate(-15deg);
+  }
+}
+
+@keyframes fadeOut {
   to {
     opacity: 0;
     transform: scale(0.9);
@@ -390,223 +542,51 @@ video {
   }
 }
 
-.messages {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none; /* Allow clicking through container */
-  z-index: 5;
-}
-
-.controls {
-  position: fixed;
-  bottom: 2rem;
-  left: 2rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: rgba(0, 0, 0, 0.8);
-  padding: 1rem;
-  border-radius: 4px;
-  border: 1px solid #444;
-  max-width: calc(100vw - 4rem); /* Use viewport width instead */
-  flex-wrap: wrap;
-  z-index: 5; /* Lower z-index than local video */
-  box-sizing: border-box; /* Include padding in width calculation */
-  opacity: 0.5;
-}
-
-.fullscreen-button {
-  position: fixed;
-  top: 1rem;
-  right: 1rem;
-  z-index: 10;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: opacity 0.3s ease;
-}
-
-.fullscreen-button:hover {
-  background: rgba(0, 0, 0, 0.7);
-}
-
-.fullscreen-button svg {
-  width: 24px;
-  height: 24px;
-  fill: currentColor;
-}
-
-.fullscreen-button.active {
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* Add fullscreen styles for controls visibility */
-.video-container:-webkit-full-screen .controls {
-  position: fixed;
-  bottom: 2rem;
-  left: 2rem;
-  z-index: 2147483647;
-}
-
-.video-container:-moz-full-screen .controls {
-  position: fixed;
-  bottom: 2rem;
-  left: 2rem;
-  z-index: 2147483647;
-}
-
-.video-container:fullscreen .controls {
-  position: fixed;
-  bottom: 2rem;
-  left: 2rem;
-  z-index: 2147483647;
-}
-
-/* Ensure fullscreen button shows on hover */
-.fullscreen-button.active:hover {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-/* Add hover trigger area */
-.video-container::before {
-  content: "";
-  position: fixed;
-  top: 0;
-  right: 0;
-  width: 80px;
-  height: 80px;
-  z-index: 9;
-}
-
-.video-container::before:hover + .fullscreen-button.active {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-/* Add toggle button styles */
-#toggleLocalVideo {
-  position: absolute;
-  bottom: 2rem;
-  right: 0;
-  width: 40px;
-  height: 139px; /* Match local video height */
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid #444;
-  border-right: none;
-  border-radius: 4px 0 0 4px;
-  color: #fff;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9;
-  transition: right 0.3s ease;
-}
-
-#toggleLocalVideo svg {
-  width: 24px;
-  height: 24px;
-  fill: currentColor;
-  transform: rotate(180deg); /* Point left by default */
-}
-
-#toggleLocalVideo.visible {
-  right: 240px; /* Move with video */
-}
-
-#toggleLocalVideo.visible svg {
-  transform: rotate(0deg); /* Point right when visible */
-}
-
-/* Update media queries to use vh units */
+/* Media Queries */
 @media (max-width: 900px) {
-  #localVideo {
-    bottom: calc(2rem + 80px); /* Move above controls */
+  .controls {
+    width: 95vw;
+    bottom: 20px;
+    padding: 16px;
+    gap: 12px;
   }
 
-  .controls {
-    left: 1rem;
-    right: 1rem;
-    max-width: calc(100vw - 2rem);
+  #localVideo {
+    bottom: 110px;
+    width: 160px;
+    height: 90px;
+    right: -160px; /* Update hidden state for smaller width */
   }
 
   #toggleLocalVideo {
-    bottom: calc(2rem + 80px);
-  }
-}
-
-/* Update media queries to use vh units */
-@media (max-width: 630px) {
-  #localVideo {
-    bottom: calc(4rem + 80px); /* Move above controls */
-    width: 160px; /* Smaller local video on mobile */
-    height: 90px;
-    right: -160px;
-  }
-
-  .controls {
-    left: 0.5rem; /* Keep left alignment */
-    right: 0.5rem;
-    max-width: calc(100vw - 1rem);
-    padding: 0.75rem;
-  }
-
-  .message-container {
-    max-width: 100%;
-    /* min-width: 150px; */
-  }
-
-  #toggleLocalVideo {
-    bottom: calc(4rem + 80px);
-    height: 90px;
+    bottom: 125px;
   }
 
   #toggleLocalVideo.visible {
-    right: 160px;
+    right: 180px; /* 160px width + 20px margin */
   }
 }
 
-.glowing {
-  background-color: #555 !important;
-  box-shadow: 0 0 15px #fff;
-  border-color: #fff;
-}
+@media (max-width: 600px) {
+  .message-container {
+    width: 100%;
+    margin: 8px 0 0 0;
+    order: 10; /* Move to bottom of flex container */
+  }
 
-@keyframes shake {
-  0% {
-    transform: rotate(0deg);
+  .controls {
+    flex-wrap: wrap;
+    justify-content: space-around;
+    border-radius: 20px 20px 0 0;
+    bottom: 0;
+    left: 0;
+    transform: none;
+    width: 100%;
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
   }
-  25% {
-    transform: rotate(15deg);
-  }
-  50% {
-    transform: rotate(0eg);
-  }
-  75% {
-    transform: rotate(-15deg);
-  }
-  100% {
-    transform: rotate(0deg);
-  }
-}
 
-.shaking {
-  animation: shake 0.5s ease-in-out infinite;
-  background-color: #555 !important;
-}
-
-.hidden {
-  display: none !important;
+  #localVideo {
+    bottom: 160px;
+    /* Right properties inherited from 900px media query */
+  }
 }

@@ -7,6 +7,9 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
     <title>Portl</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
     <script type="module" src="/frontend/src/index.ts"></script>
     <link rel="icon" type="image/png" href="/favicon.png" />
@@ -20,14 +23,17 @@
           </svg>
         </button>
         <video id="remoteVideo" autoplay playsinline></video>
-        <button id="toggleLocalVideo">
+        <video id="localVideo" autoplay muted playsinline class="visible"></video>
+        <button id="toggleLocalVideo" class="visible">
           <svg viewBox="0 0 24 24">
             <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" />
           </svg>
         </button>
-        <video id="localVideo" autoplay muted playsinline class="visible"></video>
-
         <div class="status" id="status">
+          <div class="screw tl"></div>
+          <div class="screw tr"></div>
+          <div class="screw bl"></div>
+          <div class="screw br"></div>
           <div class="status-item">
             <span class="status-light disconnected" id="localLight"></span>
             <span>Local video</span>
@@ -57,6 +63,10 @@
       </div>
 
       <div class="controls">
+        <div class="screw tl"></div>
+        <div class="screw tr"></div>
+        <div class="screw bl"></div>
+        <div class="screw br"></div>
         <button id="videoToggle" class="control-button">
           <svg viewBox="0 0 24 24">
             <path
