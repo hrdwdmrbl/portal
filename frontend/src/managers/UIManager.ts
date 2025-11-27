@@ -380,7 +380,7 @@ export class UIManager {
     }
   }
 
-  public setWebsocketStatus(status: "open" | "closed" | "error"): void {
+  public setWebsocketLight(status: "open" | "closed" | "error"): void {
     this.websocketLight.classList.remove("active", "disconnected", "connecting");
     if (status === "open") {
       this.websocketLight.classList.add("active");
@@ -391,6 +391,10 @@ export class UIManager {
     } else {
       throw new Error(`Invalid websocket status: ${status}`);
     }
+  }
+
+  public setWebsocketStatus(message: string): void {
+    this.websocketStatus.textContent = message;
   }
 
   public setPeerConnecting(isConnecting: boolean, isReconnecting?: boolean): void {

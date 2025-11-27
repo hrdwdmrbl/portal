@@ -38,7 +38,7 @@ export class PeerCoordinationManager {
     this.ws.onopen = () => {
       this.uiManager.log("WebSocket connected");
       rtcManager.handleSignalingOpen();
-      this.uiManager.setWebsocketStatus("open");
+      this.uiManager.setWebsocketLight("open");
     };
 
     this.ws.onmessage = async (evt) => {
@@ -50,7 +50,7 @@ export class PeerCoordinationManager {
     this.ws.onclose = () => {
       this.uiManager.log("WebSocket closed");
       rtcManager.handleSignalingClose();
-      this.uiManager.setWebsocketStatus("closed");
+      this.uiManager.setWebsocketLight("closed");
 
       this.reconnectionTimeout = setTimeout(() => {
         this.setupWsHandlers(rtcManager, retryCount + 1);
@@ -59,7 +59,7 @@ export class PeerCoordinationManager {
 
     this.ws.onerror = (event: Event) => {
       this.uiManager.log("WebSocket error");
-      this.uiManager.setWebsocketStatus("error");
+      this.uiManager.setWebsocketLight("error");
     };
   }
 
@@ -68,7 +68,7 @@ export class PeerCoordinationManager {
       this.ws.onclose = null; // Prevent reconnection logic from triggering here if called manually
       this.ws.close();
       this.ws = null;
-      this.uiManager.setWebsocketStatus("closed");
+      this.uiManager.setWebsocketLight("closed");
       if (this.reconnectionTimeout) {
         clearTimeout(this.reconnectionTimeout);
         this.reconnectionTimeout = undefined;

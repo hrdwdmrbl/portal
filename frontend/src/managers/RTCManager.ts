@@ -166,8 +166,10 @@ export class RTCManager {
 
     if (signalingMessage.type === "role") {
       this.role = signalingMessage.data.role;
-      const clientId = signalingMessage.data.clientId || "unknown";
+      const clientId = signalingMessage.data.clientId;
+      const roomId = signalingMessage.data.roomId;
       this.uiManager.log(`I am the ${this.role} (${clientId})`);
+      this.uiManager.setWebsocketStatus(roomId);
 
       if (this.role === "offerer") {
         await this.createAndSendOffer();
