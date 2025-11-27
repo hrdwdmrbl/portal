@@ -31,7 +31,8 @@ export class PeerCoordinationManager {
     }
   }
 
-  private setupWsHandlers(rtcManager: RTCManager): void {
+  private reconnectionTimeout: number | undefined;
+  private setupWsHandlers(rtcManager: RTCManager, retryCount = 0): void {
     this.ws = new WebSocket(this.wsUrl);
 
     this.ws.onopen = () => {
@@ -50,6 +51,10 @@ export class PeerCoordinationManager {
       this.uiManager.log("WebSocket closed");
       rtcManager.handleSignalingClose();
       this.uiManager.setWebsocketStatus("closed");
+
+      this.reconnectionTimeout = setTimeout(() => {
+        this.setupWsHandlers(rtcManager, retryCount + 1);
+      }, Math.min(1000 * Math.pow(2, retryCount), 10000));
     };
 
     this.ws.onerror = (event: Event) => {
@@ -64,6 +69,10 @@ export class PeerCoordinationManager {
       this.ws.close();
       this.ws = null;
       this.uiManager.setWebsocketStatus("closed");
+      if (this.reconnectionTimeout) {
+        clearTimeout(this.reconnectionTimeout);
+        this.reconnectionTimeout = undefined;
+      }
     }
   }
 }

@@ -60,7 +60,7 @@ export class DataChannelManager {
 
     switch (msg.type) {
       case "videoState":
-        this.uiManager.setRemoteVideoTrackEnabled(msg.enabled);
+        this.uiManager.setRemoteVideoTrackEnabled(msg.enabled || msg.data.enabled);
         break;
       case "message":
         const text = atob(msg.data);

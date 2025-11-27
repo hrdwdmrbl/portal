@@ -444,10 +444,6 @@ export class UIManager {
       // Disconnected/Failed
       this.peerConnectionLight.classList.add("disconnected");
       this.peerConnectionStatus.textContent = state.charAt(0).toUpperCase() + state.slice(1);
-      // Also ensure video status reflects disconnection if not already set
-      if (!this.remoteVideoStatus.textContent) {
-        this.setRemoteVideoStatus("disconnected");
-      }
     }
   }
 
@@ -463,19 +459,6 @@ export class UIManager {
       this.peerConnectionStatus.textContent = `Answering...${status}`;
     } else {
       throw new Error(`Invalid role: ${role}`);
-    }
-  }
-
-  public setRemoteVideoStatus(status: "connected" | "disconnected" | "reconnecting"): void {
-    this.remoteVideoStatus.textContent = status;
-
-    this.remoteVideoLight.classList.remove("active", "disconnected", "connecting");
-    if (status === "connected") {
-      this.remoteVideoLight.classList.add("active");
-    } else if (status === "reconnecting") {
-      this.remoteVideoLight.classList.add("connecting"); // Use yellow for paused/warning
-    } else {
-      this.remoteVideoLight.classList.add("disconnected");
     }
   }
 
@@ -522,6 +505,16 @@ export class UIManager {
       }
     });
 
+    track.addEventListener("ended", () => {
+      this.setRemoteVideoTrackEnabled(false);
+    });
+    track.addEventListener("mute", () => {
+      this.setRemoteVideoOpacity("0");
+    });
+    track.addEventListener("unmute", () => {
+      this.setRemoteVideoOpacity("1");
+    });
+
     stream.addTrack(track);
   }
 
@@ -530,12 +523,25 @@ export class UIManager {
   }
 
   public setRemoteVideoTrackEnabled(enabled: boolean): void {
+    this.setRemoteVideoStatus(enabled ? "connected" : "disconnected");
+
     const stream = this.remoteVideo.srcObject as MediaStream;
     if (stream) {
       const track = stream.getVideoTracks()[0];
       if (track) {
         track.enabled = enabled;
       }
+    }
+  }
+
+  private setRemoteVideoStatus(status: "connected" | "disconnected"): void {
+    this.remoteVideoStatus.textContent = status;
+
+    this.remoteVideoLight.classList.remove("active", "disconnected", "connecting");
+    if (status === "connected") {
+      this.remoteVideoLight.classList.add("active");
+    } else {
+      this.remoteVideoLight.classList.add("disconnected");
     }
   }
 

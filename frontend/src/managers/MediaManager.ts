@@ -89,7 +89,7 @@ export class MediaManager {
 
   public startVideoMonitoring(
     remoteVideo: HTMLVideoElement,
-    onStatusChange: (status: "connected" | "disconnected" | "reconnecting", opacity: "0" | "1") => void
+    onStatusChange: (status: "connected" | "disconnected") => void
   ): void {
     this.stopVideoMonitoring();
 
@@ -97,12 +97,10 @@ export class MediaManager {
       const stream = remoteVideo.srcObject as MediaStream;
       const videoTrack = stream?.getVideoTracks()[0];
 
-      if (!stream || !videoTrack || !videoTrack.enabled) {
-        onStatusChange("disconnected", "0");
-      } else if (videoTrack.readyState === "ended") {
-        onStatusChange("reconnecting", "0");
+      if (!stream || !videoTrack || videoTrack.readyState === "ended") {
+        onStatusChange("disconnected");
       } else if (videoTrack.enabled) {
-        onStatusChange("connected", "1");
+        onStatusChange("connected");
       }
     }, 1000);
   }

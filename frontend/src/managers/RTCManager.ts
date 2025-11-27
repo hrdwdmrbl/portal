@@ -8,6 +8,7 @@ export class RTCManager {
   private peerConnection: RTCPeerConnection | null = null;
   private role: Role = null;
   private reconnectAttempts = 0;
+  private isReconnecting = false;
   private isConnecting = false;
   private reconnectionTimeout: number | undefined;
 
@@ -19,10 +20,11 @@ export class RTCManager {
   ) {}
 
   private async reconnect(): Promise<void> {
-    if (this.reconnectionTimeout) {
-      // Already attempting to reconnect
+    if (this.isReconnecting || this.isConnecting) {
+      this.uiManager.log("Already attempting to reconnect...");
       return;
     }
+    this.isReconnecting = true;
 
     this.reconnectAttempts++;
     this.uiManager.log("Attempting to reconnect...");
@@ -34,12 +36,13 @@ export class RTCManager {
       this.reconnectionTimeout = setTimeout(resolve, delay);
       this.reconnectionTimeout = undefined;
     });
-    return this.start(true);
+    await this.start(true);
+    this.isReconnecting = false;
   }
 
   public async start(isReconnect = false): Promise<void> {
-    if (this.isConnecting || this.reconnectionTimeout) {
-      this.uiManager.log("Already attempting to reconnect...");
+    if (this.isConnecting) {
+      this.uiManager.log("Already attempting to connect...");
       return;
     }
 
@@ -136,13 +139,9 @@ export class RTCManager {
   private setupRemoteTrackMonitoring(track: MediaStreamTrack): void {
     if (track.kind === "video") {
       const remoteVideo = this.uiManager.getRemoteVideoElement();
-      this.mediaManager.startVideoMonitoring(
-        remoteVideo,
-        (status: "connected" | "disconnected" | "reconnecting", opacity: "0" | "1") => {
-          this.uiManager.setRemoteVideoStatus(status);
-          this.uiManager.setRemoteVideoOpacity(opacity);
-        }
-      );
+      this.mediaManager.startVideoMonitoring(remoteVideo, (status: "connected" | "disconnected") => {
+        this.uiManager.setRemoteVideoTrackEnabled(status === "connected");
+      });
 
       track.onended = () => {
         this.uiManager.log(`Remote ${track.kind} track ended`);
@@ -271,8 +270,6 @@ export class RTCManager {
   }
 
   public async cleanup(): Promise<void> {
-    if (this.reconnectionTimeout) clearTimeout(this.reconnectionTimeout);
-
     if (this.peerConnection) {
       this.tearDownPeerConnection(this.peerConnection);
       this.peerConnection = null;
