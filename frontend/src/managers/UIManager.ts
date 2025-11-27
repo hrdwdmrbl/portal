@@ -10,6 +10,7 @@ export class UIManager {
   private videoContainer: HTMLElement;
   private messagesContainer: HTMLElement;
   private remoteVideo: HTMLVideoElement;
+  private statusContainer: HTMLElement;
 
   // Chat
   private messageInput: HTMLInputElement;
@@ -53,6 +54,7 @@ export class UIManager {
     this.remoteVideo = this.getElement("remoteVideo") as HTMLVideoElement;
     this.videoContainer = document.querySelector("body") as HTMLElement;
     this.messagesContainer = this.getElement("messages");
+    this.statusContainer = this.getElement("status");
 
     // Chat
     this.messageInput = this.getElement("messageInput") as HTMLInputElement;
