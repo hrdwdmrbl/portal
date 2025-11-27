@@ -100,7 +100,7 @@ export class Room {
       // Check liveness based on metadata timestamp
       // If lastSeen is older than 15 seconds, consider it dead even if key exists
       const lastSeen = client.lastSeen;
-      if (now - lastSeen < 15000) {
+      if (lastSeen && now - lastSeen < 15000) {
         activeClientIds.add(client.clientId);
       }
     }

@@ -23,6 +23,8 @@ export class WebSocketHandler {
     // Get or create room
     const roomState = await this.storage.get<string>(this.roomId);
     const room = new Room(this.roomId, roomState);
+    room.cleanupDisconnectedClients();
+
     const client = room.addClient(this.clientId);
     await this.storage.put(this.roomId, room.toJSON());
 
