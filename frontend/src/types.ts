@@ -8,9 +8,16 @@ export type RoleAssignmentMessage = {
   };
 };
 
+export interface IceCandidateInit {
+  candidate?: string;
+  sdpMLineIndex?: number | null;
+  sdpMid?: string | null;
+  usernameFragment?: string | null;
+}
+
 export type OfferOrAnswerData = {
   sdp: string;
-  ice: RTCIceCandidateInit[];
+  ice: IceCandidateInit[];
 };
 
 export type OfferMessage = {
