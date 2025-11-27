@@ -1,15 +1,14 @@
-import { OfferOrAnswerData } from "../frontend/src/types";
+import type { OfferOrAnswerData } from "../frontend/src/types";
 import { Client } from "./Client";
-import type { RoomState, ClientType } from "./types";
+import type { RoomState } from "./types";
 
 export class Room {
-  public clients: Record<string, ClientType>;
+  public clients: Record<string, Client>;
   public offer: OfferOrAnswerData | null;
   public answer: OfferOrAnswerData | null;
   public roomId: string;
 
-  constructor(roomId: string, existingRoom: RoomState | string | null = null) {
-    this.roomId = roomId;
+  constructor(existingRoom: string | undefined = undefined, roomId: string) {
     let state: RoomState;
 
     if (typeof existingRoom === "string") {
@@ -17,12 +16,10 @@ export class Room {
         state = JSON.parse(existingRoom);
       } catch (error: unknown) {
         console.error("Error parsing room state:", error);
-        console.log(existingRoom);
-
-        state = { clients: {}, offer: null, answer: null };
+        state = { roomId, clients: {}, offer: null, answer: null };
       }
     } else {
-      state = existingRoom || { clients: {}, offer: null, answer: null };
+      state = { roomId, clients: {}, offer: null, answer: null };
     }
 
     const clients = state.clients || {};
@@ -31,6 +28,7 @@ export class Room {
     });
 
     this.clients = clients;
+    this.roomId = state.roomId;
     this.offer = state.offer || null;
     this.answer = state.answer || null;
   }
@@ -48,8 +46,6 @@ export class Room {
       lastSeen: Date.now(),
     });
     this.clients[clientId] = client;
-
-    console.log(`Added ${clientId} as ${role} to room ${this.roomId}. ${Object.keys(this.clients).length} clients`);
     return client;
   }
 
@@ -61,29 +57,21 @@ export class Room {
     const client = this.clients[clientId];
     if (!client) return;
 
-    // If offerer disconnects, clear offer and answer
     if (client.role === "offerer") {
       this.offer = null;
       this.answer = null;
     }
-    // If answerer disconnects, only clear answer
     if (client.role === "answerer") {
       this.answer = null;
     }
 
     delete this.clients[clientId];
-    console.log(`Removed client ${clientId}, remaining clients: ${Object.keys(this.clients).length}`);
   }
 
-  /**
-   * Clean up zombie clients that are in Room but not active
-   */
   public cleanupDisconnectedClients(): void {
     const activeClientIds = this.getActiveClientIds();
-    const now = Date.now();
-    for (const [clientId, client] of Object.entries(this.clients)) {
+    for (const [clientId] of Object.entries(this.clients)) {
       if (!activeClientIds.has(clientId)) {
-        console.log(`Removing zombie client ${clientId} (missing presence)`);
         this.removeClient(clientId);
       }
     }
@@ -94,19 +82,18 @@ export class Room {
     const activeClientIds = new Set<string>();
 
     for (const client of Object.values(this.clients)) {
-      // Check liveness based on metadata timestamp
-      // If lastSeen is older than 15 seconds, consider it dead even if key exists
       const lastSeen = client.lastSeen;
       if (lastSeen && now - lastSeen < 15000) {
         activeClientIds.add(client.clientId);
       }
     }
-
     return activeClientIds;
   }
 
   public updatePresence(clientId: string): void {
-    this.clients[clientId].lastSeen = Date.now();
+    if (this.clients[clientId]) {
+      this.clients[clientId].lastSeen = Date.now();
+    }
   }
 
   public addOffer(offer: OfferOrAnswerData): void {
@@ -124,6 +111,7 @@ export class Room {
 
   public asJson(): RoomState {
     return {
+      roomId: this.roomId,
       clients: this.clients,
       offer: this.offer,
       answer: this.answer,

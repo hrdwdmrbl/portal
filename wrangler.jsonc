@@ -17,10 +17,12 @@
       "enabled": true
     }
   },
-  "kv_namespaces": [
-    {
-      "binding": "PORTAL_KV",
-      "id": "dd32dbb082834438a2605347fac64675"
-    }
-  ]
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "PORTAL_ROOM",
+        "class_name": "PortalManager"
+      }
+    ]
+  }
 }

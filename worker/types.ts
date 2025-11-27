@@ -1,6 +1,7 @@
+import type { PortalManager } from "./PortalManager";
+
 export interface Env {
-  PORTAL_KV: KVNamespace;
-  USE_IN_MEMORY_STORAGE?: string; // "true" or "false"
+  PORTAL_ROOM: DurableObjectNamespace<PortalManager>;
 }
 
 export interface ClientType {
@@ -11,6 +12,7 @@ export interface ClientType {
 }
 
 export interface RoomState {
+  roomId: string;
   clients: Record<string, ClientType>;
   offer: any | null;
   answer: any | null;
