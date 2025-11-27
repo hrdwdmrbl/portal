@@ -5,6 +5,7 @@ export type RoleAssignmentMessage = {
   data: {
     role: Role;
     clientId: string;
+    roomId: string;
   };
 };
 

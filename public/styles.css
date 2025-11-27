@@ -208,13 +208,13 @@ video {
 }
 
 .status-light.active::after {
-  background: var(--accent);
-  box-shadow: 0 0 8px var(--accent);
+  background: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
 }
 
 .status-light.disconnected::after {
-  background: #ff4444;
-  box-shadow: 0 0 8px #ff4444;
+  background: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
 }
 
 .status-light.connecting::after {
