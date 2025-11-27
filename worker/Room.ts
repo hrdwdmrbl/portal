@@ -83,11 +83,8 @@ export class Room {
     const now = Date.now();
     for (const [clientId, client] of Object.entries(this.clients)) {
       if (!activeClientIds.has(clientId)) {
-        // Grace period of 15 seconds to allow for KV consistency
-        if (now - client.lastSeen > 15000) {
-          console.log(`Removing zombie client ${clientId} (missing presence)`);
-          this.removeClient(clientId);
-        }
+        console.log(`Removing zombie client ${clientId} (missing presence)`);
+        this.removeClient(clientId);
       }
     }
   }
