@@ -29,7 +29,7 @@ export class WebSocketHandler {
     // Send role assignment
     this.send({
       type: "role",
-      data: { role: client.role, clientId: this.clientId },
+      data: { role: client.role, clientId: this.clientId, roomId: this.roomId },
     } satisfies RoleAssignmentMessage);
 
     // If answerer, send existing offer
