@@ -13,7 +13,11 @@ export default {
     ) {
       const { 0: client, 1: server } = new WebSocketPair();
 
-      const roomId = request.headers.get("CF-Connecting-IP") || "default-room";
+      const roomId = request.headers.get("CF-Connecting-IP");
+      if (!roomId) {
+        return new Response("No room ID", { status: 400 });
+      }
+
       const roomDurableObjectId = env.PORTAL_ROOM.idFromName(roomId);
       const portalRoom = env.PORTAL_ROOM.get(roomDurableObjectId);
 

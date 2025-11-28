@@ -10,8 +10,21 @@ export class PortalRoom extends DurableObject {
 
   constructor(state: DurableObjectState, env: Env) {
     super(state, env);
+
     void this.ctx.blockConcurrencyWhile(async () => {
       this.storedState = await this.ctx.storage.get<string>("roomState");
+
+      // Rehydrate room from existing WebSocket attachments if available
+      const attachment = this.ctx
+        .getWebSockets()
+        .map((socket) => socket.deserializeAttachment() as ClientAttachment)
+        .find(({ roomId }) => {
+          return roomId;
+        });
+
+      if (attachment && attachment.roomId) {
+        this.room = new Room(attachment.roomId, this.storedState);
+      }
     });
   }
 
@@ -29,11 +42,11 @@ export class PortalRoom extends DurableObject {
     });
     await this.saveState();
 
-    handler.handleConnection();
-
     // Persist the clientId to the socket attachment so we can recover it after hibernation
     const clientId = handler.getClientId();
     socket.serializeAttachment({ clientId, roomId } as ClientAttachment);
+
+    handler.handleConnection();
   }
 
   async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer) {
