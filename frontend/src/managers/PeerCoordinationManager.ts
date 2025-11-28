@@ -39,6 +39,7 @@ export class PeerCoordinationManager {
       this.uiManager.log("WebSocket connected");
       rtcManager.handleSignalingOpen();
       this.uiManager.setWebsocketLight("open");
+      retryCount = 0;
     };
 
     this.ws.onmessage = async (evt) => {
@@ -52,16 +53,15 @@ export class PeerCoordinationManager {
       rtcManager.handleSignalingClose();
       this.uiManager.setWebsocketLight("closed");
 
-      this.reconnectionTimeout = setTimeout(
-        () => {
-          this.setupWsHandlers(rtcManager, retryCount + 1);
-        },
-        Math.min(1000 * Math.pow(2, retryCount), 10000),
-      );
+      const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
+      this.uiManager.log("WS reconnecting in " + delay + "ms");
+      this.reconnectionTimeout = setTimeout(() => {
+        this.setupWsHandlers(rtcManager, retryCount + 1);
+      }, delay);
     };
 
     this.ws.onerror = (event: Event) => {
-      this.uiManager.log("WebSocket error");
+      this.uiManager.log("WebSocket error: " + event.type);
       this.uiManager.setWebsocketLight("error");
     };
   }

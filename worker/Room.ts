@@ -8,7 +8,7 @@ export class Room {
   public answer?: OfferOrAnswerData;
   public roomId: string;
 
-  constructor(existingRoom: string = undefined, roomId: string) {
+  constructor(roomId: string, existingRoom?: string) {
     let state: RoomState;
 
     if (typeof existingRoom === "string") {

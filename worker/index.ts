@@ -18,8 +18,7 @@ export default {
         return new Response("No room ID", { status: 400 });
       }
 
-      const roomDurableObjectId = env.PORTAL_ROOM.idFromName(roomId);
-      const portalRoom = env.PORTAL_ROOM.get(roomDurableObjectId);
+      const portalRoom = env.PORTAL_ROOM.getByName(roomId);
 
       await portalRoom.join(server, roomId);
 
