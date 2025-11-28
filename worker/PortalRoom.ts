@@ -1,0 +1,139 @@
+import { DurableObject } from "cloudflare:workers";
+import { Room } from "./Room";
+import { WebSocketHandler } from "./WebSocketHandler";
+import type { ClientAttachment, Env } from "./types";
+import type { SignalingMessage } from "../frontend/src/types";
+
+export class PortalRoom extends DurableObject {
+  private room: Room | undefined;
+  private storedState?: string;
+
+  constructor(state: DurableObjectState, env: Env) {
+    super(state, env);
+    void this.ctx.blockConcurrencyWhile(async () => {
+      this.storedState = await this.ctx.storage.get<string>("roomState");
+    });
+  }
+
+  async join(socket: WebSocket, roomId: string): Promise<void> {
+    this.room ||= new Room(roomId, this.storedState);
+
+    // Accept the WebSocket natively to enable hibernation
+    this.ctx.acceptWebSocket(socket);
+
+    // Initialize handler just for the setup phase (adding client, sending initial roles)
+    // We pass 'undefined' for existingClientId because this is a fresh connection
+    const handler = new WebSocketHandler(this.room, socket, {
+      onSave: () => this.saveState(),
+      onBroadcast: (msg, exclude) => this.broadcast(msg, exclude),
+    });
+    await this.saveState();
+
+    handler.handleConnection();
+
+    // Persist the clientId to the socket attachment so we can recover it after hibernation
+    const clientId = handler.getClientId();
+    socket.serializeAttachment({ clientId } as ClientAttachment);
+  }
+
+  async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer) {
+    if (!this.room) {
+      throw new Error("Room not joined in webSocketMessage");
+    }
+
+    const attachment = socket.deserializeAttachment() as ClientAttachment;
+    const clientId = attachment && attachment.clientId;
+
+    if (!clientId) {
+      throw new Error("Socket missing clientId attachment in webSocketError");
+    }
+
+    const handler = new WebSocketHandler(
+      this.room,
+      socket,
+      {
+        onSave: () => this.saveState(),
+        onBroadcast: (msg, exclude) => this.broadcast(msg, exclude),
+      },
+      clientId, // Rehydrate handler with existing ID
+    );
+
+    // Convert ArrayBuffer to string if necessary
+    const msgString =
+      typeof message === "string" ? message : new TextDecoder().decode(message);
+    await handler.onMessage(msgString);
+  }
+
+  webSocketClose(
+    socket: WebSocket,
+    // _code: number,
+    // _reason: string,
+    // _wasClean: boolean,
+  ) {
+    if (!this.room) {
+      throw new Error("Room not joined in webSocketClose");
+    }
+
+    const attachment = socket.deserializeAttachment() as ClientAttachment;
+    const clientId = attachment && attachment.clientId;
+    if (!clientId) {
+      throw new Error("Socket missing clientId attachment in webSocketError");
+    }
+
+    this.room.removeClient(clientId);
+    return this.saveState();
+  }
+
+  async webSocketError(socket: WebSocket, error: unknown) {
+    console.error("WebSocket error:", error);
+    if (!this.room) {
+      throw new Error("Room not joined in webSocketError");
+    }
+
+    // Error usually leads to close, but we can treat it similarly
+    // We can attempt cleanup if we have the ID
+    const attachment = socket.deserializeAttachment() as ClientAttachment;
+    const clientId = attachment && attachment.clientId;
+    if (!clientId) {
+      throw new Error("Socket missing clientId attachment in webSocketError");
+    }
+
+    this.room.removeClient(clientId);
+    await this.saveState();
+
+    socket.close();
+  }
+
+  private broadcast(msg: SignalingMessage, excludeClientId: string) {
+    if (!this.room) {
+      throw new Error("Room not joined in saveState");
+    }
+
+    for (const socket of this.ctx.getWebSockets()) {
+      const attachment = socket.deserializeAttachment() as ClientAttachment;
+      const id = attachment && attachment.clientId;
+
+      if (id !== excludeClientId) {
+        const client = this.room.getClient(id);
+        const sender = this.room.getClient(excludeClientId);
+
+        if (!client) continue;
+        if (!sender) continue;
+
+        if (sender.role === "offerer" && client.role === "answerer") {
+          socket.send(JSON.stringify(msg));
+        } else if (sender.role === "answerer" && client.role === "offerer") {
+          socket.send(JSON.stringify(msg));
+        }
+      }
+    }
+  }
+
+  private async saveState() {
+    if (!this.room) {
+      throw new Error("Room not joined in saveState");
+    }
+
+    await this.ctx.storage.put("roomState", this.room.toJSON());
+  }
+}

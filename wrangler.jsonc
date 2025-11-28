@@ -21,7 +21,7 @@
     "bindings": [
       {
         "name": "PORTAL_ROOM",
-        "class_name": "PortalManager"
+        "class_name": "PortalRoom"
       }
     ]
   }

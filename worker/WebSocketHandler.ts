@@ -1,43 +1,61 @@
 import { Room } from "./Room";
 import { generateClientId } from "./utils/nameGenerator";
-import type { OfferMessage, OfferOrAnswerData, RoleAssignmentMessage, SignalingMessage } from "../frontend/src/types";
+import type {
+  OfferMessage,
+  OfferOrAnswerData,
+  RoleAssignmentMessage,
+  SignalingMessage,
+} from "../frontend/src/types";
 import type { Client } from "./Client";
 
 export interface WebSocketHandlerCallbacks {
   onSave: () => Promise<void>;
-  onBroadcast: (signalingMessage: SignalingMessage, excludeClientId: string) => void;
-  onClose: (clientId: string) => boolean;
+  onBroadcast: (
+    signalingMessage: SignalingMessage,
+    excludeClientId: string,
+  ) => void;
 }
 
 export class WebSocketHandler {
   private socket: WebSocket;
   private room: Room;
   private callbacks: WebSocketHandlerCallbacks;
+  private clientId: string;
   private client: Client;
 
-  constructor(room: Room, socket: WebSocket, callbacks: WebSocketHandlerCallbacks) {
+  constructor(
+    room: Room,
+    socket: WebSocket,
+    callbacks: WebSocketHandlerCallbacks,
+    existingClientId?: string,
+  ) {
     this.room = room;
     this.socket = socket;
     this.callbacks = callbacks;
+    if (existingClientId) {
+      this.clientId = existingClientId;
+    } else {
+      this.clientId = generateClientId();
+    }
+    this.client = this.room.addClient(this.clientId);
   }
 
-  public async handleConnection(): Promise<void> {
-    this.socket.accept();
-
-    this.socket.addEventListener("message", (messageEvent: MessageEvent) => this.onMessage(messageEvent));
-    this.socket.addEventListener("close", () => this.onClose());
-    this.socket.addEventListener("error", (error: ErrorEvent) => this.onError(error));
-
-    this.client = await this.addClient();
-
+  /**
+   * Initializes the client logic (adds to room if needed, sends initial roles/offers).
+   * Does NOT accept the socket or bind event listeners (handled by DO native API).
+   */
+  public handleConnection(): void {
     // Send role assignment
     this.send({
       type: "role",
-      data: { role: this.client.role, clientId: this.client.clientId, roomId: this.room.roomId },
+      data: {
+        role: this.client.role,
+        clientId: this.clientId,
+        roomId: this.room.roomId,
+      },
     } satisfies RoleAssignmentMessage);
 
     // If answerer, send existing offer if it exists
-    // else the client will wait for the offerer to send an offer
     if (this.client.role === "answerer" && this.room.offer) {
       this.send({
         type: "offer",
@@ -46,49 +64,26 @@ export class WebSocketHandler {
     }
   }
 
-  private async onMessage(messageEvent: MessageEvent): Promise<void> {
-    const message = JSON.parse(messageEvent.data as string) as SignalingMessage;
+  public async onMessage(messageString: string): Promise<void> {
+    const message = JSON.parse(messageString) as SignalingMessage;
 
-    const client = this.room.getClient(this.client.clientId);
-    if (!client) {
-      throw new Error(`Client ${this.client.clientId} not found`);
-    }
-
-    if (message.type === "offer" && client.role === "offerer") {
+    if (message.type === "offer" && this.client.role === "offerer") {
       await this.addOffer(message.data);
-      this.callbacks.onBroadcast(message, this.client.clientId);
+      this.callbacks.onBroadcast(message, this.clientId);
     }
 
-    if (message.type === "answer" && client.role === "answerer") {
+    if (message.type === "answer" && this.client.role === "answerer") {
       await this.addAnswer(message.data);
-      this.callbacks.onBroadcast(message, this.client.clientId);
+      this.callbacks.onBroadcast(message, this.clientId);
     }
   }
 
-  private onError(error: ErrorEvent): void {
-    console.error("Error occurred", error);
-    this.onClose();
-  }
-
-  private async onClose(): Promise<boolean> {
-    await this.removeClient();
-    return this.callbacks.onClose(this.client.clientId);
-  }
-
-  private async removeClient(): Promise<void> {
-    this.room.removeClient(this.client.clientId);
-    return this.callbacks.onSave();
-  }
-  private async addClient(): Promise<Client> {
-    this.client = this.room.addClient(generateClientId());
-    await this.callbacks.onSave();
-    return this.client;
-  }
-  private async addAnswer(answer: OfferOrAnswerData): Promise<void> {
+  private addAnswer(answer: OfferOrAnswerData): Promise<void> {
     this.room.addAnswer(answer);
     return this.callbacks.onSave();
   }
-  private async addOffer(offer: OfferOrAnswerData): Promise<void> {
+
+  private addOffer(offer: OfferOrAnswerData): Promise<void> {
     this.room.addOffer(offer);
     return this.callbacks.onSave();
   }
@@ -98,6 +93,6 @@ export class WebSocketHandler {
   }
 
   public getClientId(): string {
-    return this.client.clientId;
+    return this.clientId;
   }
 }

@@ -1,7 +1,8 @@
-import type { PortalManager } from "./PortalManager";
+import { OfferOrAnswerData } from "../frontend/src/types";
+import type { PortalRoom } from "./PortalRoom";
 
 export interface Env {
-  PORTAL_ROOM: DurableObjectNamespace<PortalManager>;
+  PORTAL_ROOM: DurableObjectNamespace<PortalRoom>;
 }
 
 export interface ClientType {
@@ -12,6 +13,10 @@ export interface ClientType {
 export interface RoomState {
   roomId: string;
   clients: Record<string, ClientType>;
-  offer: any | null;
-  answer: any | null;
+  offer?: OfferOrAnswerData;
+  answer?: OfferOrAnswerData;
+}
+
+export interface ClientAttachment {
+  clientId: string;
 }

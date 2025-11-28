@@ -4,16 +4,16 @@ import type { RoomState } from "./types";
 
 export class Room {
   public clients: Record<string, Client>;
-  public offer: OfferOrAnswerData | null;
-  public answer: OfferOrAnswerData | null;
+  public offer?: OfferOrAnswerData;
+  public answer?: OfferOrAnswerData;
   public roomId: string;
 
-  constructor(existingRoom: string | undefined = undefined, roomId: string) {
+  constructor(existingRoom: string = undefined, roomId: string) {
     let state: RoomState;
 
     if (typeof existingRoom === "string") {
       try {
-        state = JSON.parse(existingRoom);
+        state = JSON.parse(existingRoom) as RoomState;
       } catch (error: unknown) {
         console.error("Error parsing room state:", error);
         state = { roomId, clients: {}, offer: null, answer: null };
@@ -29,12 +29,14 @@ export class Room {
 
     this.clients = clients;
     this.roomId = state.roomId;
-    this.offer = state.offer || null;
-    this.answer = state.answer || null;
+    this.offer = state.offer;
+    this.answer = state.answer;
   }
 
   public addClient(clientId: string): Client {
-    const hasOfferer = Object.values(this.clients).some((c) => c.role === "offerer");
+    const hasOfferer = Object.values(this.clients).some(
+      (c) => c.role === "offerer",
+    );
     const role: "offerer" | "answerer" = !hasOfferer ? "offerer" : "answerer";
 
     const client = new Client({
