@@ -32,12 +32,13 @@ export class RTCManager {
 
     this.cleanup();
     const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 10000);
+    this.uiManager.log("Reconnecting in " + delay + "ms...");
     await new Promise((resolve) => {
       this.reconnectionTimeout = setTimeout(resolve, delay);
       this.reconnectionTimeout = undefined;
     });
-    this.start(true);
     this.isReconnecting = false;
+    this.start(true);
   }
 
   public start(isReconnect = false): void {
@@ -90,6 +91,7 @@ export class RTCManager {
       if (state === "connected") {
         this.handleConnectionSuccess();
       } else if (state === "failed" || state === "disconnected") {
+        this.setConnecting(false);
         void this.reconnect();
       }
     };

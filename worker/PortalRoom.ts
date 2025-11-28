@@ -28,15 +28,19 @@ export class PortalRoom extends DurableObject {
     });
   }
 
-  async join(socket: WebSocket, roomId: string): Promise<void> {
+  async fetch(request: Request): Promise<Response> {
+    const roomId = request.headers.get("CF-Connecting-IP");
+
+    const { 0: client, 1: server } = new WebSocketPair();
+
     this.room ||= new Room(roomId, this.storedState);
 
+
     // Accept the WebSocket natively to enable hibernation
-    this.ctx.acceptWebSocket(socket);
+    this.ctx.acceptWebSocket(server);
 
     // Initialize handler just for the setup phase (adding client, sending initial roles)
-    // We pass 'undefined' for existingClientId because this is a fresh connection
-    const handler = new WebSocketHandler(this.room, socket, {
+    const handler = new WebSocketHandler(this.room, server, {
       onSave: () => this.saveState(),
       onBroadcast: (msg, exclude) => this.broadcast(msg, exclude),
     });
@@ -44,9 +48,14 @@ export class PortalRoom extends DurableObject {
 
     // Persist the clientId to the socket attachment so we can recover it after hibernation
     const clientId = handler.getClientId();
-    socket.serializeAttachment({ clientId, roomId } as ClientAttachment);
+    server.serializeAttachment({ clientId, roomId } as ClientAttachment);
 
     handler.handleConnection();
+
+    return new Response(null, {
+      status: 101,
+      webSocket: client,
+    });
   }
 
   async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer) {
