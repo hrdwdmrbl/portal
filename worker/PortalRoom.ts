@@ -35,6 +35,12 @@ export class PortalRoom extends DurableObject {
 
     this.room ||= new Room(roomId, this.storedState);
 
+    // Rescue in case of de-sync between sockets and Room
+    const activeClientIds = this.ctx
+      .getWebSockets()
+      .map((socket) => socket.deserializeAttachment() as ClientAttachment)
+      .map(({ clientId }) => clientId);
+    this.room.setClients(activeClientIds);
 
     // Accept the WebSocket natively to enable hibernation
     this.ctx.acceptWebSocket(server);

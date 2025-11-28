@@ -51,6 +51,14 @@ export class Room {
     return this.clients[clientId];
   }
 
+  public setClients(clientIds: string[]): void {
+    Object.keys(this.clients).forEach((clientId) => {
+      if (!clientIds.includes(clientId)) {
+        this.removeClient(clientId);
+      }
+    });
+  }
+
   public removeClient(clientId: string): void {
     const client = this.clients[clientId];
     if (!client) return;
