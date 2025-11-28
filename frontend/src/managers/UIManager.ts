@@ -450,9 +450,6 @@ export class UIManager {
         this.peerConnectionLight.classList.remove("active");
         this.peerConnectionLight.classList.add("disconnected");
       }
-      this.peerConnectionStatus.textContent = isReconnecting
-        ? "Reconnecting..."
-        : "";
       return;
     }
 
@@ -465,9 +462,6 @@ export class UIManager {
       ? "disconnected"
       : "connecting";
     this.startPeerConnectionBlink(blinkClass);
-    this.peerConnectionStatus.textContent = isReconnecting
-      ? "Reconnecting..."
-      : "";
   }
 
   public setPeerConnectionState(state: RTCPeerConnectionState): void {

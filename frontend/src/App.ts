@@ -41,10 +41,10 @@ export class App {
   }
 
   public async init(): Promise<void> {
-    await this.mediaManager.start();
-    this.rtcManager.start();
-
     window.addEventListener("beforeunload", () => void this.cleanup());
+
+    await this.mediaManager.start();
+    await this.rtcManager.start();
   }
 
   private async cleanup(): Promise<void> {

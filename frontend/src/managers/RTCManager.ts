@@ -50,9 +50,6 @@ export class RTCManager {
     this.setConnecting(true, isReconnect);
 
     try {
-      if (this.peerConnection) {
-        this.tearDownPeerConnection(this.peerConnection);
-      }
       const peerConnection = new RTCPeerConnection({});
       this.peerConnection = peerConnection;
 
@@ -60,11 +57,11 @@ export class RTCManager {
 
       this.peerCoordinationManager.connect(this);
     } catch (error: unknown) {
-      this.setConnecting(false);
       this.uiManager.log(
         "Connection error: " +
           (error instanceof Error ? error.message : String(error)),
       );
+      this.setConnecting(false);
       void this.reconnect();
     }
   }
@@ -84,13 +81,20 @@ export class RTCManager {
     };
 
     peerConnection.onconnectionstatechange = () => {
+      // "closed" | "connected" | "connecting" | "disconnected" | "failed" | "new"
       const state = peerConnection.connectionState;
       this.uiManager.log(`Connection state: ${state}`);
       this.uiManager.setPeerConnectionState(state);
 
       if (state === "connected") {
-        this.handleConnectionSuccess();
-      } else if (state === "failed" || state === "disconnected") {
+        this.setConnecting(false);
+        this.reconnectAttempts = 0;
+        this.peerCoordinationManager.close();
+      } else if (
+        state === "failed" ||
+        state === "disconnected" ||
+        state === "closed"
+      ) {
         this.setConnecting(false);
         void this.reconnect();
       }
@@ -136,12 +140,6 @@ export class RTCManager {
   private setConnecting(isConnecting: boolean, isReconnect?: boolean): void {
     this.isConnecting = isConnecting;
     this.uiManager.setPeerConnecting(isConnecting, isReconnect);
-  }
-
-  private handleConnectionSuccess(): void {
-    this.setConnecting(false);
-    this.reconnectAttempts = 0;
-    this.peerCoordinationManager.close();
   }
 
   private setupRemoteTrackMonitoring(track: MediaStreamTrack): void {
@@ -313,17 +311,6 @@ export class RTCManager {
 
   public handleSignalingOpen(): void {
     this.reconnectAttempts = 0;
-  }
-
-  public handleSignalingClose(): void {
-    // We don't care if the signaller
-    if (
-      !this.peerConnection ||
-      (this.peerConnection.connectionState !== "connected" &&
-        !this.isConnecting)
-    ) {
-      void this.reconnect();
-    }
   }
 
   private async setLocalDescription(

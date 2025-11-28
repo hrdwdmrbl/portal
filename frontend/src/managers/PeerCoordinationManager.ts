@@ -50,7 +50,6 @@ export class PeerCoordinationManager {
 
     this.ws.onclose = () => {
       this.uiManager.log("WebSocket closed");
-      rtcManager.handleSignalingClose();
       this.uiManager.setWebsocketLight("closed");
 
       const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
