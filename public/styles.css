@@ -97,59 +97,6 @@ video {
   position: relative;
 }
 
-/* Screw Decorations */
-.screw {
-  position: absolute;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #d1d4d9, #f0f2f5);
-  box-shadow: inset 1px 1px 2px rgba(255, 255, 255, 0.8), inset -1px -1px 2px rgba(0, 0, 0, 0.2),
-    1px 1px 2px rgba(0, 0, 0, 0.3);
-  z-index: 2;
-}
-
-.screw::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) rotate(45deg);
-  width: 6px;
-  height: 1px;
-  background: rgba(0, 0, 0, 0.3);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
-}
-
-.screw::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) rotate(-45deg);
-  width: 6px;
-  height: 1px;
-  background: rgba(0, 0, 0, 0.3);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
-}
-
-.screw.tl {
-  top: 8px;
-  left: 8px;
-}
-.screw.tr {
-  top: 8px;
-  right: 8px;
-}
-.screw.bl {
-  bottom: 8px;
-  left: 8px;
-}
-.screw.br {
-  bottom: 8px;
-  right: 8px;
-}
-
 /* Status Panel */
 .status {
   position: absolute;
