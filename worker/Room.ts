@@ -34,17 +34,20 @@ export class Room {
   }
 
   public addClient(clientId: string): Client {
-    const hasOfferer = Object.values(this.clients).some(
-      (c) => c.role === "offerer",
-    );
-    const role: "offerer" | "answerer" = !hasOfferer ? "offerer" : "answerer";
+    if (!this.clients[clientId]) {
+      const hasOfferer = Object.values(this.clients).some(
+        (c) => c.role === "offerer",
+      );
+      const role: "offerer" | "answerer" = !hasOfferer ? "offerer" : "answerer";
 
-    const client = new Client({
-      clientId: clientId,
-      role: role,
-    });
-    this.clients[clientId] = client;
-    return client;
+      const client = new Client({
+        clientId: clientId,
+        role: role,
+      });
+      this.clients[clientId] = client;
+    }
+
+    return this.clients[clientId];
   }
 
   public getClient(clientId: string): Client {
