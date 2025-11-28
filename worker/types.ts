@@ -19,4 +19,5 @@ export interface RoomState {
 
 export interface ClientAttachment {
   clientId: string;
+  roomId: string;
 }

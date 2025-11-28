@@ -33,20 +33,17 @@ export class PortalRoom extends DurableObject {
 
     // Persist the clientId to the socket attachment so we can recover it after hibernation
     const clientId = handler.getClientId();
-    socket.serializeAttachment({ clientId } as ClientAttachment);
+    socket.serializeAttachment({ clientId, roomId } as ClientAttachment);
   }
 
   async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer) {
-    if (!this.room) {
-      throw new Error("Room not joined in webSocketMessage");
-    }
-
     const attachment = socket.deserializeAttachment() as ClientAttachment;
     const clientId = attachment && attachment.clientId;
-
-    if (!clientId) {
-      throw new Error("Socket missing clientId attachment in webSocketError");
+    const roomId = attachment && attachment.roomId;
+    if (!clientId || !roomId) {
+      throw new Error("Socket missing attachment in webSocketError");
     }
+    this.room ||= new Room(roomId, this.storedState);
 
     const handler = new WebSocketHandler(
       this.room,
@@ -70,15 +67,13 @@ export class PortalRoom extends DurableObject {
     // _reason: string,
     // _wasClean: boolean,
   ) {
-    if (!this.room) {
-      throw new Error("Room not joined in webSocketClose");
-    }
-
     const attachment = socket.deserializeAttachment() as ClientAttachment;
     const clientId = attachment && attachment.clientId;
-    if (!clientId) {
-      throw new Error("Socket missing clientId attachment in webSocketError");
+    const roomId = attachment && attachment.roomId;
+    if (!clientId || !roomId) {
+      throw new Error("Socket missing attachment in webSocketError");
     }
+    this.room ||= new Room(roomId, this.storedState);
 
     this.room.removeClient(clientId);
     return this.saveState();
@@ -86,17 +81,14 @@ export class PortalRoom extends DurableObject {
 
   async webSocketError(socket: WebSocket, error: unknown) {
     console.error("WebSocket error:", error);
-    if (!this.room) {
-      throw new Error("Room not joined in webSocketError");
-    }
 
-    // Error usually leads to close, but we can treat it similarly
-    // We can attempt cleanup if we have the ID
     const attachment = socket.deserializeAttachment() as ClientAttachment;
     const clientId = attachment && attachment.clientId;
-    if (!clientId) {
+    const roomId = attachment && attachment.roomId;
+    if (!clientId || !roomId) {
       throw new Error("Socket missing clientId attachment in webSocketError");
     }
+    this.room ||= new Room(roomId, this.storedState);
 
     this.room.removeClient(clientId);
     await this.saveState();
