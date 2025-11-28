@@ -1,5 +1,6 @@
 import { UIManager } from "./UIManager";
 import { SoundManager } from "./SoundManager";
+import { DataChannelMessage } from "../types";
 
 export class DataChannelManager {
   private dataChannel: RTCDataChannel | null = null;
@@ -30,14 +31,6 @@ export class DataChannelManager {
     this.dataChannel.onmessage = (event) => this.handleMessage(event);
   }
 
-  public send(type: string, data: any): void {
-    if (this.dataChannel && this.dataChannel.readyState === "open") {
-      this.dataChannel.send(JSON.stringify({ type, data }));
-    } else {
-      console.warn("Data channel not ready");
-    }
-  }
-
   public sendMessage(text: string): void {
     this.send("message", window.btoa(text));
   }
@@ -51,25 +44,32 @@ export class DataChannelManager {
   }
 
   public sendVideoState(enabled: boolean): void {
-    this.send("videoState", { enabled });
+    this.send("videoState", enabled);
+  }
+
+  public send(type: string, data: boolean | string): void {
+    if (this.dataChannel && this.dataChannel.readyState === "open") {
+      this.dataChannel.send(JSON.stringify({ type, data }));
+    } else {
+      console.warn("Data channel not ready");
+    }
   }
 
   private handleMessage(event: MessageEvent): void {
-    const msg = JSON.parse(event.data);
+    const msg = JSON.parse(event.data) as DataChannelMessage;
     console.log("Data channel message:", msg);
 
     switch (msg.type) {
       case "videoState":
-        this.uiManager.setRemoteVideoTrackEnabled(
-          msg.enabled || msg.data.enabled,
-        );
+        this.uiManager.setRemoteVideoTrackEnabled(msg.data);
         break;
       case "message":
+        // eslint-disable-next-line no-case-declarations
         const text = atob(msg.data);
         this.uiManager.addChatMessage(text);
         break;
       case "sound":
-        this.soundManager.playSound(msg.data);
+        void this.soundManager.playSound(msg.data);
         if (msg.data.includes("ring")) {
           this.uiManager.triggerRingVisual();
         }
@@ -82,8 +82,6 @@ export class DataChannelManager {
           this.soundManager.stopMorseBeep();
         }
         break;
-      default:
-        console.log(`Unhandled message type: ${msg.type}`);
     }
   }
 

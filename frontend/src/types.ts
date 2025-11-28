@@ -36,8 +36,28 @@ export type SignalingMessage =
   | OfferMessage
   | AnswerMessage;
 
-export interface DataChannelMessage {
-  type: "videoState" | "message" | "sound" | "morse";
-  data: any;
-  enabled?: boolean; // For videoState
-}
+type DataChannelVideoState = {
+  type: "videoState";
+  data: boolean;
+};
+
+type DataChannelMessageSound = {
+  type: "sound";
+  data: string;
+};
+
+type DataChannelMessageMorse = {
+  type: "morse";
+  data: boolean;
+};
+
+type DataChannelMessageMessage = {
+  type: "message";
+  data: string;
+};
+
+export type DataChannelMessage =
+  | DataChannelVideoState
+  | DataChannelMessageSound
+  | DataChannelMessageMorse
+  | DataChannelMessageMessage;

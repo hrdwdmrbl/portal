@@ -24,5 +24,11 @@
         "class_name": "PortalRoom"
       }
     ]
-  }
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": ["PortalRoom"]
+    }
+  ]
 }

@@ -42,14 +42,14 @@ export class App {
 
   public async init(): Promise<void> {
     await this.mediaManager.start();
-    await this.rtcManager.start();
+    this.rtcManager.start();
 
-    window.addEventListener("beforeunload", () => this.cleanup());
+    window.addEventListener("beforeunload", () => void this.cleanup());
   }
 
-  private cleanup(): void {
+  private async cleanup(): Promise<void> {
     this.rtcManager.cleanup();
     this.mediaManager.cleanup();
-    this.soundManager.cleanup();
+    await this.soundManager.cleanup();
   }
 }

@@ -43,7 +43,9 @@ export class SoundManager {
   public startMorseBeep(): void {
     if (!this.audioContext) {
       this.audioContext = new (
-        window.AudioContext || (window as any).webkitAudioContext
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: AudioContext })
+          .webkitAudioContext
       )();
     }
 

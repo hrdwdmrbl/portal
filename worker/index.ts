@@ -13,7 +13,7 @@ export default {
     ) {
       const { 0: client, 1: server } = new WebSocketPair();
 
-      const roomId = request.headers.get("CF-Connecting-IP");
+      const roomId = request.headers.get("CF-Connecting-IP") || "localhost";
       if (!roomId) {
         return new Response("No room ID", { status: 400 });
       }

@@ -30,17 +30,17 @@ export class RTCManager {
     this.uiManager.log("Attempting to reconnect...");
     this.uiManager.setPeerConnecting(false, true);
 
-    await this.cleanup();
+    this.cleanup();
     const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 10000);
     await new Promise((resolve) => {
       this.reconnectionTimeout = setTimeout(resolve, delay);
       this.reconnectionTimeout = undefined;
     });
-    await this.start(true);
+    this.start(true);
     this.isReconnecting = false;
   }
 
-  public async start(isReconnect = false): Promise<void> {
+  public start(isReconnect = false): void {
     if (this.isConnecting) {
       this.uiManager.log("Already attempting to connect...");
       return;
@@ -64,8 +64,7 @@ export class RTCManager {
         "Connection error: " +
           (error instanceof Error ? error.message : String(error)),
       );
-      this.reconnect();
-      throw error;
+      void this.reconnect();
     }
   }
 
@@ -91,7 +90,7 @@ export class RTCManager {
       if (state === "connected") {
         this.handleConnectionSuccess();
       } else if (state === "failed" || state === "disconnected") {
-        this.reconnect();
+        void this.reconnect();
       }
     };
 
@@ -103,7 +102,7 @@ export class RTCManager {
       this.uiManager.log(`ICE connection state: ${iceState}`);
     };
     peerConnection.onicegatheringstatechange = (event: Event) => {
-      this.uiManager.log(`ICE gathering state: ${event}`);
+      this.uiManager.log(`ICE gathering state: ${event.type}`);
     };
     peerConnection.onicecandidateerror = (
       event: RTCPeerConnectionIceErrorEvent,
@@ -113,10 +112,10 @@ export class RTCManager {
       );
     };
     peerConnection.onnegotiationneeded = (event: Event) => {
-      this.uiManager.log(`Negotiation needed: ${event}`);
+      this.uiManager.log(`Negotiation needed: ${event.type}`);
     };
     peerConnection.onsignalingstatechange = (event: Event) => {
-      this.uiManager.log(`Signaling state: ${event}`);
+      this.uiManager.log(`Signaling state: ${event.type}`);
     };
   }
 
@@ -250,7 +249,7 @@ export class RTCManager {
     this.sendOffer(offer, iceCandidates);
 
     // Resend offer logic
-    const offerResendInterval = setInterval(async () => {
+    const offerResendInterval = setInterval(() => {
       if (this.peerConnection?.currentRemoteDescription === null) {
         this.uiManager.log("No answer received, resending offer...");
         this.sendOffer(offer, iceCandidates);
@@ -292,7 +291,7 @@ export class RTCManager {
     }
   }
 
-  public async cleanup(): Promise<void> {
+  public cleanup(): void {
     if (this.peerConnection) {
       this.tearDownPeerConnection(this.peerConnection);
       this.peerConnection = null;
@@ -321,7 +320,7 @@ export class RTCManager {
       (this.peerConnection.connectionState !== "connected" &&
         !this.isConnecting)
     ) {
-      this.reconnect();
+      void this.reconnect();
     }
   }
 
