@@ -42,7 +42,9 @@ export class BubbleManager {
     // Measure size after append
     const rect = element.getBoundingClientRect();
     // Use diagonal to ensure content fits in circle
-    const diagonal = Math.sqrt(rect.width * rect.width + rect.height * rect.height);
+    const diagonal = Math.sqrt(
+      rect.width * rect.width + rect.height * rect.height,
+    );
     const radius = diagonal / 2;
 
     // Style adjustments for bubble shape
@@ -78,7 +80,8 @@ export class BubbleManager {
 
     this.bubbles.splice(index, 1);
 
-    bubble.element.style.transition = "transform 0.2s ease-out, opacity 0.2s ease-out";
+    bubble.element.style.transition =
+      "transform 0.2s ease-out, opacity 0.2s ease-out";
     bubble.element.style.transform = `translate(${bubble.x - bubble.radius}px, ${
       bubble.y - bubble.radius
     }px) scale(1.5)`;

@@ -20,16 +20,24 @@ export class App {
 
     this.peerCoordinationManager = new PeerCoordinationManager(this.uiManager);
 
-    this.dataChannelManager = new DataChannelManager(this.uiManager, this.soundManager);
+    this.dataChannelManager = new DataChannelManager(
+      this.uiManager,
+      this.soundManager,
+    );
 
     this.rtcManager = new RTCManager(
       this.peerCoordinationManager,
       this.mediaManager,
       this.dataChannelManager,
-      this.uiManager
+      this.uiManager,
     );
 
-    this.uiManager.initialize(this.rtcManager, this.dataChannelManager, this.mediaManager, this.soundManager);
+    this.uiManager.initialize(
+      this.rtcManager,
+      this.dataChannelManager,
+      this.mediaManager,
+      this.soundManager,
+    );
   }
 
   public async init(): Promise<void> {

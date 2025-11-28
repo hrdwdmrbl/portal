@@ -52,9 +52,12 @@ export class PeerCoordinationManager {
       rtcManager.handleSignalingClose();
       this.uiManager.setWebsocketLight("closed");
 
-      this.reconnectionTimeout = setTimeout(() => {
-        this.setupWsHandlers(rtcManager, retryCount + 1);
-      }, Math.min(1000 * Math.pow(2, retryCount), 10000));
+      this.reconnectionTimeout = setTimeout(
+        () => {
+          this.setupWsHandlers(rtcManager, retryCount + 1);
+        },
+        Math.min(1000 * Math.pow(2, retryCount), 10000),
+      );
     };
 
     this.ws.onerror = (event: Event) => {

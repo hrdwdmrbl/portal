@@ -12,9 +12,17 @@ export class MediaManager {
     this.uiManager = uiManager;
   }
 
-  public async start(): Promise<{ stream: MediaStream; videoEnabled: boolean; audioEnabled: boolean }> {
+  public async start(): Promise<{
+    stream: MediaStream;
+    videoEnabled: boolean;
+    audioEnabled: boolean;
+  }> {
     if (this.localStream) {
-      return { stream: this.localStream, videoEnabled: this.videoEnabled, audioEnabled: this.audioEnabled };
+      return {
+        stream: this.localStream,
+        videoEnabled: this.videoEnabled,
+        audioEnabled: this.audioEnabled,
+      };
     }
 
     this.uiManager.log("Requesting local media...");
@@ -45,10 +53,14 @@ export class MediaManager {
       `Local media acquired: ${this.localStream
         .getTracks()
         .map((t: MediaStreamTrack) => t.kind)
-        .join(", ")}`
+        .join(", ")}`,
     );
 
-    return { stream: this.localStream, videoEnabled: this.videoEnabled, audioEnabled: this.audioEnabled };
+    return {
+      stream: this.localStream,
+      videoEnabled: this.videoEnabled,
+      audioEnabled: this.audioEnabled,
+    };
   }
 
   public toggleVideo(): boolean {
@@ -89,7 +101,7 @@ export class MediaManager {
 
   public startVideoMonitoring(
     remoteVideo: HTMLVideoElement,
-    onStatusChange: (status: "connected" | "disconnected") => void
+    onStatusChange: (status: "connected" | "disconnected") => void,
   ): void {
     this.stopVideoMonitoring();
 

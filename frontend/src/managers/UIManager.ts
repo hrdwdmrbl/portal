@@ -103,7 +103,7 @@ export class UIManager {
     rtcManager: RTCManager,
     dataChannelManager: DataChannelManager,
     mediaManager: MediaManager,
-    soundManager: SoundManager
+    soundManager: SoundManager,
   ): void {
     this.rtcManager = rtcManager;
     this.dataChannelManager = dataChannelManager;
@@ -129,7 +129,7 @@ export class UIManager {
         e.preventDefault();
         this.triggerSend();
       },
-      { passive: false }
+      { passive: false },
     );
 
     // Ring Button
@@ -140,7 +140,7 @@ export class UIManager {
         e.preventDefault();
         this.handleRing();
       },
-      { passive: false }
+      { passive: false },
     );
 
     // Morse Button
@@ -157,9 +157,15 @@ export class UIManager {
 
     this.morseButton.addEventListener("mousedown", startMorse);
     this.morseButton.addEventListener("mouseup", stopMorse);
-    this.morseButton.addEventListener("touchstart", startMorse, { passive: false });
-    this.morseButton.addEventListener("touchend", stopMorse, { passive: false });
-    this.morseButton.addEventListener("touchcancel", stopMorse, { passive: false });
+    this.morseButton.addEventListener("touchstart", startMorse, {
+      passive: false,
+    });
+    this.morseButton.addEventListener("touchend", stopMorse, {
+      passive: false,
+    });
+    this.morseButton.addEventListener("touchcancel", stopMorse, {
+      passive: false,
+    });
 
     // Window mouseup to catch lost clicks
     window.addEventListener("mouseup", (e) => {
@@ -174,14 +180,16 @@ export class UIManager {
     });
 
     // Fullscreen
-    this.fullscreenToggle.addEventListener("click", () => this.toggleFullscreen());
+    this.fullscreenToggle.addEventListener("click", () =>
+      this.toggleFullscreen(),
+    );
     this.fullscreenToggle.addEventListener(
       "touchstart",
       (e) => {
         e.preventDefault();
         this.toggleFullscreen();
       },
-      { passive: false }
+      { passive: false },
     );
     document.addEventListener("fullscreenchange", () => {
       if (!document.fullscreenElement) {
@@ -200,7 +208,7 @@ export class UIManager {
         e.preventDefault();
         this.handleVideoToggle();
       },
-      { passive: false }
+      { passive: false },
     );
 
     this.audioToggle.addEventListener("click", (e) => {
@@ -213,14 +221,20 @@ export class UIManager {
         e.preventDefault();
         this.handleAudioToggle();
       },
-      { passive: false }
+      { passive: false },
     );
 
     // Local Video Visibility
-    this.toggleLocalVideoButton.addEventListener("click", (e) => this.toggleLocalVideoVisibility(e));
-    this.toggleLocalVideoButton.addEventListener("touchstart", (e) => this.toggleLocalVideoVisibility(e), {
-      passive: false,
-    });
+    this.toggleLocalVideoButton.addEventListener("click", (e) =>
+      this.toggleLocalVideoVisibility(e),
+    );
+    this.toggleLocalVideoButton.addEventListener(
+      "touchstart",
+      (e) => this.toggleLocalVideoVisibility(e),
+      {
+        passive: false,
+      },
+    );
   }
 
   private triggerSend(): void {
@@ -287,7 +301,10 @@ export class UIManager {
     this.assertInitialized();
 
     const enabled = this.mediaManager.toggleVideo();
-    this.updateLocalMediaState(this.mediaManager.isVideoEnabled(), this.mediaManager.isAudioEnabled());
+    this.updateLocalMediaState(
+      this.mediaManager.isVideoEnabled(),
+      this.mediaManager.isAudioEnabled(),
+    );
     this.log(`Video ${enabled ? "enabled" : "disabled"}`);
 
     this.rtcManager.updateTrack("video", enabled);
@@ -302,7 +319,10 @@ export class UIManager {
     this.assertInitialized();
 
     const enabled = this.mediaManager.toggleAudio();
-    this.updateLocalMediaState(this.mediaManager.isVideoEnabled(), this.mediaManager.isAudioEnabled());
+    this.updateLocalMediaState(
+      this.mediaManager.isVideoEnabled(),
+      this.mediaManager.isAudioEnabled(),
+    );
     this.log(`Audio ${enabled ? "enabled" : "disabled"}`);
 
     this.rtcManager.updateTrack("audio", enabled);
@@ -336,10 +356,18 @@ export class UIManager {
     this.soundManager.playMessage();
   }
 
-  public setLocalStatus(type: "video" | "audio", status: "error", message: string): void;
+  public setLocalStatus(
+    type: "video" | "audio",
+    status: "error",
+    message: string,
+  ): void;
   public setLocalStatus(type: "video" | "audio", status: "active"): void;
   public setLocalStatus(type: "video" | "audio", status: "connecting"): void;
-  public setLocalStatus(type: "video" | "audio", status: "active" | "error" | "connecting", message?: string) {
+  public setLocalStatus(
+    type: "video" | "audio",
+    status: "active" | "error" | "connecting",
+    message?: string,
+  ) {
     if (status === "error") {
       this.setMediaError(type, message!);
     } else if (status === "active") {
@@ -367,7 +395,11 @@ export class UIManager {
   }
 
   public setDataChannelState(state: "open" | "closed" | "error"): void {
-    this.dataChannelLight.classList.remove("active", "disconnected", "connecting");
+    this.dataChannelLight.classList.remove(
+      "active",
+      "disconnected",
+      "connecting",
+    );
 
     if (state === "open") {
       this.dataChannelLight.classList.add("active");
@@ -381,7 +413,11 @@ export class UIManager {
   }
 
   public setWebsocketLight(status: "open" | "closed" | "error"): void {
-    this.websocketLight.classList.remove("active", "disconnected", "connecting");
+    this.websocketLight.classList.remove(
+      "active",
+      "disconnected",
+      "connecting",
+    );
     if (status === "open") {
       this.websocketLight.classList.add("active");
     } else if (status === "closed") {
@@ -397,28 +433,48 @@ export class UIManager {
     this.websocketStatus.textContent = message;
   }
 
-  public setPeerConnecting(isConnecting: boolean, isReconnecting?: boolean): void {
+  public setPeerConnecting(
+    isConnecting: boolean,
+    isReconnecting?: boolean,
+  ): void {
     if (!isConnecting) {
       this.stopPeerConnectionBlink();
-      if (isReconnecting || !this.peerConnectionLight.classList.contains("active")) {
+      if (
+        isReconnecting ||
+        !this.peerConnectionLight.classList.contains("active")
+      ) {
         this.peerConnectionLight.classList.remove("active");
         this.peerConnectionLight.classList.add("disconnected");
       }
-      this.peerConnectionStatus.textContent = isReconnecting ? "Reconnecting..." : "";
+      this.peerConnectionStatus.textContent = isReconnecting
+        ? "Reconnecting..."
+        : "";
       return;
     }
 
-    this.peerConnectionLight.classList.remove("active", "disconnected", "connecting");
-    const blinkClass: "connecting" | "disconnected" = isReconnecting ? "disconnected" : "connecting";
+    this.peerConnectionLight.classList.remove(
+      "active",
+      "disconnected",
+      "connecting",
+    );
+    const blinkClass: "connecting" | "disconnected" = isReconnecting
+      ? "disconnected"
+      : "connecting";
     this.startPeerConnectionBlink(blinkClass);
-    this.peerConnectionStatus.textContent = isReconnecting ? "Reconnecting..." : "";
+    this.peerConnectionStatus.textContent = isReconnecting
+      ? "Reconnecting..."
+      : "";
   }
 
   public setPeerConnectionState(state: RTCPeerConnectionState): void {
     this.assertInitialized();
     this.stopPeerConnectionBlink();
 
-    this.peerConnectionLight.classList.remove("active", "disconnected", "connecting");
+    this.peerConnectionLight.classList.remove(
+      "active",
+      "disconnected",
+      "connecting",
+    );
 
     if (state === "connected") {
       this.peerConnectionLight.classList.add("active");
@@ -438,13 +494,14 @@ export class UIManager {
     } else if (state === "disconnected" || state === "failed") {
       // Disconnected/Failed
       this.peerConnectionLight.classList.add("disconnected");
-      this.peerConnectionStatus.textContent = state.charAt(0).toUpperCase() + state.slice(1);
+      this.peerConnectionStatus.textContent =
+        state.charAt(0).toUpperCase() + state.slice(1);
     }
   }
 
   public setPeerConnectionStep(
     role: Role,
-    status?: "offered" | "answered" | "listening" | "offering" | "answering"
+    status?: "offered" | "answered" | "listening" | "offering" | "answering",
   ): void {
     // TODO: Make the peerConnectionLight blink
 
@@ -469,7 +526,10 @@ export class UIManager {
     this.remoteVideo.srcObject = stream;
   }
 
-  public updateLocalMediaState(videoEnabled: boolean, audioEnabled: boolean): void {
+  public updateLocalMediaState(
+    videoEnabled: boolean,
+    audioEnabled: boolean,
+  ): void {
     // this.localVideo.style.opacity = videoEnabled ? "1" : "0";
 
     this.localLight.classList.remove("active", "disconnected", "connecting");
@@ -480,7 +540,9 @@ export class UIManager {
     } else if (!videoEnabled && !audioEnabled) {
       this.localStatus.textContent = "Media disabled";
     } else {
-      this.localStatus.textContent = videoEnabled ? "Audio disabled" : "Video disabled";
+      this.localStatus.textContent = videoEnabled
+        ? "Audio disabled"
+        : "Video disabled";
     }
 
     // Update button states
@@ -532,7 +594,11 @@ export class UIManager {
   private setRemoteVideoStatus(status: "connected" | "disconnected"): void {
     this.remoteVideoStatus.textContent = status;
 
-    this.remoteVideoLight.classList.remove("active", "disconnected", "connecting");
+    this.remoteVideoLight.classList.remove(
+      "active",
+      "disconnected",
+      "connecting",
+    );
     if (status === "connected") {
       this.remoteVideoLight.classList.add("active");
     } else {
@@ -540,14 +606,19 @@ export class UIManager {
     }
   }
 
-  private startPeerConnectionBlink(targetClass: "connecting" | "disconnected"): void {
+  private startPeerConnectionBlink(
+    targetClass: "connecting" | "disconnected",
+  ): void {
     this.stopPeerConnectionBlink();
     this.peerConnectionBlinkClass = targetClass;
     this.peerConnectionBlinkVisible = true;
     this.peerConnectionLight.classList.add(targetClass);
     this.peerConnectionBlinkInterval = window.setInterval(() => {
       this.peerConnectionBlinkVisible = !this.peerConnectionBlinkVisible;
-      this.peerConnectionLight.classList.toggle(targetClass, this.peerConnectionBlinkVisible);
+      this.peerConnectionLight.classList.toggle(
+        targetClass,
+        this.peerConnectionBlinkVisible,
+      );
     }, 400);
   }
 
@@ -566,7 +637,12 @@ export class UIManager {
   }
 
   private assertInitialized(): void {
-    if (!this.rtcManager || !this.dataChannelManager || !this.mediaManager || !this.soundManager) {
+    if (
+      !this.rtcManager ||
+      !this.dataChannelManager ||
+      !this.mediaManager ||
+      !this.soundManager
+    ) {
       throw new Error("UIManager not initialized");
     }
   }

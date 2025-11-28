@@ -31,7 +31,10 @@ export type AnswerMessage = {
   data: OfferOrAnswerData;
 };
 
-export type SignalingMessage = RoleAssignmentMessage | OfferMessage | AnswerMessage;
+export type SignalingMessage =
+  | RoleAssignmentMessage
+  | OfferMessage
+  | AnswerMessage;
 
 export interface DataChannelMessage {
   type: "videoState" | "message" | "sound" | "morse";

@@ -42,13 +42,18 @@ export class SoundManager {
 
   public startMorseBeep(): void {
     if (!this.audioContext) {
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      this.audioContext = new (
+        window.AudioContext || (window as any).webkitAudioContext
+      )();
     }
 
     if (!this.oscillator) {
       this.oscillator = this.audioContext.createOscillator();
       this.oscillator.type = "sine";
-      this.oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime);
+      this.oscillator.frequency.setValueAtTime(
+        800,
+        this.audioContext.currentTime,
+      );
 
       const gainNode = this.audioContext.createGain();
       gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);

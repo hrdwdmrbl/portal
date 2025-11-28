@@ -16,7 +16,7 @@ export class RTCManager {
     private peerCoordinationManager: PeerCoordinationManager,
     private mediaManager: MediaManager,
     private dataChannelManager: DataChannelManager,
-    private uiManager: UIManager
+    private uiManager: UIManager,
   ) {}
 
   private async reconnect(): Promise<void> {
@@ -60,7 +60,10 @@ export class RTCManager {
       this.peerCoordinationManager.connect(this);
     } catch (error: unknown) {
       this.setConnecting(false);
-      this.uiManager.log("Connection error: " + (error instanceof Error ? error.message : String(error)));
+      this.uiManager.log(
+        "Connection error: " +
+          (error instanceof Error ? error.message : String(error)),
+      );
       this.reconnect();
       throw error;
     }
@@ -102,8 +105,12 @@ export class RTCManager {
     peerConnection.onicegatheringstatechange = (event: Event) => {
       this.uiManager.log(`ICE gathering state: ${event}`);
     };
-    peerConnection.onicecandidateerror = (event: RTCPeerConnectionIceErrorEvent) => {
-      this.uiManager.log(`ICE candidate error: ${event.errorCode} ${event.errorText}`);
+    peerConnection.onicecandidateerror = (
+      event: RTCPeerConnectionIceErrorEvent,
+    ) => {
+      this.uiManager.log(
+        `ICE candidate error: ${event.errorCode} ${event.errorText}`,
+      );
     };
     peerConnection.onnegotiationneeded = (event: Event) => {
       this.uiManager.log(`Negotiation needed: ${event}`);
@@ -139,9 +146,12 @@ export class RTCManager {
   private setupRemoteTrackMonitoring(track: MediaStreamTrack): void {
     if (track.kind === "video") {
       const remoteVideo = this.uiManager.getRemoteVideoElement();
-      this.mediaManager.startVideoMonitoring(remoteVideo, (status: "connected" | "disconnected") => {
-        this.uiManager.setRemoteVideoTrackEnabled(status === "connected");
-      });
+      this.mediaManager.startVideoMonitoring(
+        remoteVideo,
+        (status: "connected" | "disconnected") => {
+          this.uiManager.setRemoteVideoTrackEnabled(status === "connected");
+        },
+      );
 
       track.onended = () => {
         this.uiManager.log(`Remote ${track.kind} track ended`);
@@ -159,7 +169,9 @@ export class RTCManager {
     }
   }
 
-  public async handleSignalingMessage(signalingMessage: SignalingMessage): Promise<void> {
+  public async handleSignalingMessage(
+    signalingMessage: SignalingMessage,
+  ): Promise<void> {
     if (!this.peerConnection) {
       throw new Error("Peer connection not created");
     }
@@ -202,7 +214,10 @@ export class RTCManager {
     }
     this.uiManager.setPeerConnectionStep(this.role, "answering");
 
-    await this.peerConnection.setRemoteDescription({ type: "offer", sdp: data.sdp });
+    await this.peerConnection.setRemoteDescription({
+      type: "offer",
+      sdp: data.sdp,
+    });
     for (const candidate of data.ice) {
       await this.peerConnection.addIceCandidate(candidate);
     }
@@ -245,7 +260,10 @@ export class RTCManager {
     }, 5000);
   }
 
-  private sendOffer(offer: RTCSessionDescriptionInit, iceCandidates: RTCIceCandidate[]): void {
+  private sendOffer(
+    offer: RTCSessionDescriptionInit,
+    iceCandidates: RTCIceCandidate[],
+  ): void {
     if (!this.peerConnection) {
       throw new Error("Peer connection not created");
     }
@@ -265,7 +283,10 @@ export class RTCManager {
       throw new Error("Peer connection not created");
     }
 
-    await this.peerConnection.setRemoteDescription({ type: "answer", sdp: data.sdp });
+    await this.peerConnection.setRemoteDescription({
+      type: "answer",
+      sdp: data.sdp,
+    });
     for (const candidate of data.ice) {
       await this.peerConnection.addIceCandidate(candidate);
     }
@@ -295,12 +316,18 @@ export class RTCManager {
 
   public handleSignalingClose(): void {
     // We don't care if the signaller
-    if (!this.peerConnection || (this.peerConnection.connectionState !== "connected" && !this.isConnecting)) {
+    if (
+      !this.peerConnection ||
+      (this.peerConnection.connectionState !== "connected" &&
+        !this.isConnecting)
+    ) {
       this.reconnect();
     }
   }
 
-  private async setLocalDescription(description: RTCSessionDescriptionInit): Promise<RTCIceCandidate[]> {
+  private async setLocalDescription(
+    description: RTCSessionDescriptionInit,
+  ): Promise<RTCIceCandidate[]> {
     if (!this.peerConnection) {
       throw new Error("Peer connection not created");
     }
@@ -321,7 +348,10 @@ export class RTCManager {
 
   private waitForIceGathering(): Promise<void> {
     return new Promise((resolve) => {
-      if (!this.peerConnection || this.peerConnection.iceGatheringState === "complete") {
+      if (
+        !this.peerConnection ||
+        this.peerConnection.iceGatheringState === "complete"
+      ) {
         resolve();
       } else {
         this.peerConnection.onicegatheringstatechange = () => {
