@@ -180,14 +180,15 @@ export class UIManager {
     });
 
     // Fullscreen
-    this.fullscreenToggle.addEventListener("click", () =>
-      this.toggleFullscreen(),
+    this.fullscreenToggle.addEventListener(
+      "click",
+      () => void this.toggleFullscreen(),
     );
     this.fullscreenToggle.addEventListener(
       "touchstart",
       (e) => {
         e.preventDefault();
-        this.toggleFullscreen();
+        void this.toggleFullscreen();
       },
       { passive: false },
     );
@@ -312,7 +313,7 @@ export class UIManager {
     if (this.dataChannelManager.isOpen()) {
       this.dataChannelManager.sendVideoState(enabled);
     }
-    this.soundManager.playSwitch();
+    void this.soundManager.playSwitch();
   }
 
   private handleAudioToggle(): void {
@@ -326,7 +327,7 @@ export class UIManager {
     this.log(`Audio ${enabled ? "enabled" : "disabled"}`);
 
     this.rtcManager.updateTrack("audio", enabled);
-    this.soundManager.playSwitch();
+    void this.soundManager.playSwitch();
   }
 
   private async toggleFullscreen(): Promise<void> {
@@ -353,7 +354,7 @@ export class UIManager {
     this.assertInitialized();
 
     this.bubbleManager.addBubble(msg);
-    this.soundManager.playMessage();
+    void this.soundManager.playMessage();
   }
 
   public setLocalStatus(
@@ -385,6 +386,7 @@ export class UIManager {
       this.audioToggle.classList.add("disabled");
       this.audioToggle.setAttribute("title", message);
     } else {
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Invalid media type: ${type}`);
     }
 
@@ -408,6 +410,7 @@ export class UIManager {
     } else if (state === "error") {
       this.dataChannelLight.classList.add("error");
     } else {
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Invalid data channel state: ${state}`);
     }
   }
@@ -425,6 +428,7 @@ export class UIManager {
     } else if (status === "error") {
       this.websocketLight.classList.add("error");
     } else {
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Invalid websocket status: ${status}`);
     }
   }
@@ -486,7 +490,7 @@ export class UIManager {
         this.localVideo.classList.remove("visible");
         this.toggleLocalVideoButton.classList.remove("visible");
       }
-      this.soundManager.playConnect();
+      void this.soundManager.playConnect();
     } else if (state === "connecting" || state === "new") {
       this.peerConnectionLight.classList.add("connecting");
       this.peerConnectionStatus.textContent = "Connecting...";
@@ -496,6 +500,7 @@ export class UIManager {
       this.peerConnectionLight.classList.add("disconnected");
       this.peerConnectionStatus.textContent =
         state.charAt(0).toUpperCase() + state.slice(1);
+      this.statusContainer.classList.remove("hidden");
     }
   }
 

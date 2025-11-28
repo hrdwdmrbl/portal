@@ -15,29 +15,29 @@ export class SoundManager {
     this.ringSound = new Audio("audios/ring.mp3");
   }
 
-  public async playError(): Promise<void> {
-    await this.errorSound.play();
+  public playError(): Promise<void> {
+    return this.errorSound.play();
   }
 
-  public async playConnect(): Promise<void> {
-    await this.connectSound.play();
+  public playConnect(): Promise<void> {
+    return this.connectSound.play();
   }
 
-  public async playMessage(): Promise<void> {
-    await this.messageSound.play();
+  public playMessage(): Promise<void> {
+    return this.messageSound.play();
   }
 
-  public async playSwitch(): Promise<void> {
-    await this.switchSound.play();
+  public playSwitch(): Promise<void> {
+    return this.switchSound.play();
   }
 
-  public async playRing(): Promise<void> {
-    await this.ringSound.play();
+  public playRing(): Promise<void> {
+    return this.ringSound.play();
   }
 
-  public async playSound(path: string): Promise<void> {
+  public playSound(path: string): Promise<void> {
     const audio = new Audio(path);
-    await audio.play();
+    return audio.play();
   }
 
   public startMorseBeep(): void {
